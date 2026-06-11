@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Tier Maker - 音楽ティア表メーカー</title>
+<meta name="description" content="好きな曲・アルバム・アーティストをドラッグ&ドロップでランク付け!SpotifyやYouTubeのリンクを貼るだけでジャケ写付きカードに。作ったティア表はURLで友達に共有できる。">
+<meta property="og:title" content="Music Tier Maker - 音楽ティア表メーカー">
+<meta property="og:description" content="好きな音楽をランク付けしてURLで共有!カードをタップすればSpotify・YouTubeですぐ聴ける。">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#16121f">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Monoton&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<style>
+  :root{
+    --bg:#16121f;
+    --panel:#221b30;
+    --panel2:#2c2440;
+    --line:#3a3052;
+    --text:#f2edf7;
+    --sub:#a99cc4;
+    --accent:#ff5c8a;
+    --spotify:#1DB954;
+    --youtube:#FF0033;
+    --card:min(96px, 27vw); /* カードの大きさ(ここを変えれば全体が変わる) */
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'M PLUS Rounded 1c',sans-serif;
+    min-height:100vh;
+    padding:16px 12px 120px;
+  }
+  header{
+    display:flex;align-items:center;gap:12px;
+    max-width:900px;margin:0 auto 14px;flex-wrap:wrap;
+  }
+  .logo{
+    font-family:'Monoton',cursive;
+    font-size:clamp(20px,5vw,32px);
+    letter-spacing:2px;
+    color:var(--accent);
+    text-shadow:0 0 18px rgba(255,92,138,.45);
+  }
+  .eq{display:flex;align-items:flex-end;gap:3px;height:26px}
+  .eq span{
+    width:5px;border-radius:2px;background:var(--accent);
+    animation:eq 1s ease-in-out infinite;
+  }
+  .eq span:nth-child(2){animation-delay:.15s;background:#ffd43b}
+  .eq span:nth-child(3){animation-delay:.3s;background:#69db7c}
+  .eq span:nth-child(4){animation-delay:.45s;background:#4dabf7}
+  @keyframes eq{0%,100%{height:30%}50%{height:100%}}
+  @media (prefers-reduced-motion: reduce){.eq span{animation:none;height:70%}}
+
+  .mode-btn{
+    margin-left:auto;
+    background:var(--panel2);color:var(--text);
+    border:1px solid var(--line);border-radius:999px;
+    padding:8px 16px;font-family:inherit;font-weight:800;
+    font-size:13px;cursor:pointer;transition:all .15s;
+  }
+  body.playmode .mode-btn{
+    background:var(--spotify);color:#0d1a10;border-color:var(--spotify);
+    box-shadow:0 0 14px rgba(29,185,84,.4);
+  }
+  .share-btn{
+    background:var(--accent);color:#1c1626;
+    border:none;border-radius:999px;
+    padding:8px 16px;font-family:inherit;font-weight:800;
+    font-size:13px;cursor:pointer;
+  }
+  .share-status{
+    max-width:900px;margin:0 auto 10px;
+    font-size:12px;color:var(--spotify);font-weight:700;text-align:right;
+  }
+  .share-status:empty{display:none}
+  .shared-banner{
+    max-width:900px;margin:0 auto 12px;
+    background:var(--panel2);border:1px solid var(--accent);
+    border-radius:12px;padding:12px 14px;
+    display:none;align-items:center;gap:10px;flex-wrap:wrap;
+    font-size:13px;
+  }
+  .shared-banner.show{display:flex}
+  .shared-banner .sb-btns{margin-left:auto;display:flex;gap:8px}
+  .shared-banner button{
+    background:var(--accent);color:#1c1626;border:none;
+    border-radius:8px;padding:7px 12px;
+    font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;
+  }
+  .shared-banner button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+
+  /* アイコン形状の切替 */
+  .imode-row{
+    max-width:1000px;margin:0 auto 12px;
+    display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+    font-size:12px;color:var(--sub);
+  }
+  .im-btn{
+    background:var(--panel2);color:var(--sub);
+    border:1px solid var(--line);border-radius:999px;
+    padding:6px 12px;font-family:inherit;font-weight:700;
+    font-size:12px;cursor:pointer;transition:all .12s;
+  }
+  .im-btn.active{
+    background:var(--accent);color:#1c1626;border-color:var(--accent);
+  }
+  /* 横長モード: 16:9のカード */
+  body.imode-wide .item{
+    width:calc(var(--card)*1.55);
+    height:calc(var(--card)*0.872);
+  }
+  body.imode-wide .tier-label,
+  body.imode-wide .tier-items{
+    min-height:calc(var(--card)*0.872 + 18px);
+  }
+  body.imode-wide .pool{
+    min-height:calc(var(--card)*0.872 + 20px);
+  }
+  /* 自動モード: 画像の縦横比に合わせる */
+  body.imode-auto .item{
+    height:auto;aspect-ratio:1/1;
+  }
+  body.imode-auto .item.is-wide{
+    width:calc(var(--card)*1.5);
+  }
+
+  .board{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+  .tier{
+    display:flex;border-radius:12px;overflow:hidden;
+    background:var(--panel);
+    border:2px solid transparent;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .tier.droppable{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,92,138,.25)}
+  .tier-label{
+    flex:0 0 72px;min-height:calc(var(--card) + 18px);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:26px;color:#1c1626;
+    text-align:center;padding:4px;
+    outline:none;cursor:text;word-break:break-all;
+  }
+  .tier-items{
+    flex:1;display:flex;flex-wrap:wrap;gap:7px;
+    padding:9px;align-content:center;min-height:calc(var(--card) + 18px);
+  }
+  .tier-tools{
+    flex:0 0 34px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:6px;
+    background:var(--panel2);
+  }
+  .tier-tools button{
+    background:none;border:none;color:var(--sub);
+    font-size:14px;cursor:pointer;padding:4px;
+  }
+  .tier-tools button:hover{color:var(--text)}
+  body.playmode .tier-tools{display:none}
+
+  .item{
+    width:var(--card);height:var(--card);border-radius:10px;
+    position:relative;cursor:grab;user-select:none;
+    overflow:hidden;flex:0 0 auto;
+    background:linear-gradient(135deg,#5b4b8a,#392f5a);
+    border:2px solid transparent;
+    transition:transform .12s, border-color .12s;
+  }
+  .item:active{cursor:grabbing}
+  body.playmode .item{cursor:pointer}
+  body.playmode .item:hover{transform:scale(1.06);border-color:var(--spotify)}
+  .item.selected{
+    border-color:var(--accent);
+    transform:scale(1.08);
+    box-shadow:0 0 14px rgba(255,92,138,.5);
+  }
+  .item img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+  .item .name{
+    position:absolute;left:0;right:0;bottom:0;
+    font-size:11.5px;font-weight:700;line-height:1.25;
+    padding:4px 5px;text-align:center;
+    background:rgba(10,8,16,.72);
+    pointer-events:none;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .item .del{
+    position:absolute;top:1px;right:1px;
+    width:18px;height:18px;border-radius:50%;
+    border:none;background:rgba(10,8,16,.7);color:#fff;
+    font-size:11px;line-height:1;cursor:pointer;display:none;
+  }
+  .item.selected .del{display:block}
+  body.playmode .item .del{display:none}
+
+  .pool-wrap{max-width:900px;margin:14px auto 0}
+  .pool-head{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:8px;flex-wrap:wrap;gap:8px;
+  }
+  .pool-head h2{font-size:15px;color:var(--sub);font-weight:700}
+  .pool{
+    display:flex;flex-wrap:wrap;gap:7px;
+    background:var(--panel);border-radius:12px;
+    padding:10px;min-height:calc(var(--card) + 20px);
+    border:2px dashed var(--line);
+    transition:border-color .15s;
+  }
+  .pool.droppable{border-color:var(--accent)}
+
+  /* 検索エリア */
+  .search-wrap{
+    max-width:900px;margin:16px auto 0;
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:14px;
+  }
+  .search-wrap h2{font-size:14px;color:var(--sub);margin-bottom:10px;font-weight:700}
+  .search-row{display:flex;gap:8px}
+  .search-row input{
+    flex:1;min-width:0;
+    background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;color:var(--text);
+    font-family:inherit;font-size:14px;outline:none;
+  }
+  .search-row input:focus{border-color:var(--accent)}
+  .results{
+    display:flex;gap:10px;overflow-x:auto;
+    margin-top:12px;padding-bottom:6px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .results:empty{display:none}
+  .result{
+    flex:0 0 110px;background:var(--panel2);
+    border:1px solid var(--line);border-radius:12px;
+    overflow:hidden;cursor:pointer;
+    transition:transform .12s,border-color .12s;
+  }
+  .result:hover{transform:translateY(-3px);border-color:var(--accent)}
+  .result img{width:110px;height:110px;object-fit:cover;display:block}
+  .result .meta{padding:6px 8px}
+  .result .t{font-size:11px;font-weight:700;line-height:1.3;max-height:2.6em;overflow:hidden}
+  .result .ar{font-size:10px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .result .add-tag{
+    display:block;text-align:center;font-size:11px;font-weight:800;
+    color:var(--accent);padding:4px 0 7px;
+  }
+  .search-status{font-size:12px;color:var(--sub);margin-top:10px}
+  .search-status:empty{display:none}
+
+  .add-form{
+    display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+    max-width:900px;margin:14px auto 0;
+  }
+  .add-form input[type=text]{
+    flex:1;min-width:150px;
+    background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;color:var(--text);
+    font-family:inherit;font-size:14px;outline:none;
+  }
+  .add-form input[type=text]:focus{border-color:var(--accent)}
+  .btn{
+    background:var(--accent);color:#1c1626;border:none;
+    border-radius:10px;padding:10px 16px;
+    font-weight:800;font-family:inherit;font-size:14px;cursor:pointer;
+  }
+  .btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  .btn:active{transform:scale(.97)}
+  #imgInput{display:none}
+  body.playmode .add-form, body.playmode #addTierBtn, body.playmode .search-wrap{display:none}
+  .hint{
+    max-width:900px;margin:10px auto 0;
+    font-size:12px;color:var(--sub);line-height:1.7;
+  }
+  details.manual{max-width:900px;margin:12px auto 0}
+  details.manual summary{
+    font-size:13px;color:var(--sub);cursor:pointer;font-weight:700;
+  }
+  body.playmode details.manual{display:none}
+
+  /* 再生メニュー(ボトムシート) */
+  .sheet-bg{
+    position:fixed;inset:0;background:rgba(8,6,14,.6);
+    display:none;z-index:40;
+  }
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:50;
+    background:var(--panel);
+    border-radius:18px 18px 0 0;
+    padding:18px 16px 26px;
+    transform:translateY(110%);
+    transition:transform .22s ease;
+    max-width:560px;margin:0 auto;
+    border:1px solid var(--line);border-bottom:none;
+  }
+  .sheet.open{transform:translateY(0)}
+  .sheet-bg.open{display:block}
+  .sheet h3{
+    font-size:16px;margin-bottom:4px;text-align:center;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .sheet .artist{
+    font-size:12px;color:var(--sub);text-align:center;margin-bottom:14px;
+  }
+  .sheet .links{display:flex;gap:10px}
+  .sheet .links a, .sheet .links button{
+    flex:1;text-decoration:none;text-align:center;
+    border-radius:12px;padding:14px 8px;border:none;
+    font-weight:800;font-size:14px;color:#fff;cursor:pointer;
+    font-family:inherit;
+  }
+  .open-spotify{background:var(--spotify);color:#0d1a10!important}
+  .open-youtube{background:var(--youtube)}
+  .preview-btn{background:var(--panel2);border:1px solid var(--line)!important}
+  .preview-btn.playing{background:var(--accent);color:#1c1626}
+  .sheet .note{font-size:11px;color:var(--sub);text-align:center;margin-top:10px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">MUSIC TIER</div>
+  <div class="eq" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <button class="mode-btn" id="modeBtn">▶ 完成モードへ</button>
+  <button class="share-btn" id="shareBtn">🔗 共有</button>
+</header>
+
+<div class="share-status" id="shareStatus"></div>
+
+<div class="imode-row">
+  <span>アイコンの形:</span>
+  <button class="im-btn" data-m="square">◼ 正方形</button>
+  <button class="im-btn" data-m="wide">▭ 横長</button>
+  <button class="im-btn" data-m="auto">画像に合わせる</button>
+</div>
+
+<div class="shared-banner" id="sharedBanner">
+  <span>🔗 共有されたティア表を表示中</span>
+  <div class="sb-btns">
+    <button id="adoptBtn">編集して自分の表にする</button>
+    <button class="ghost" id="backToMineBtn">自分の表に戻る</button>
+  </div>
+</div>
+
+<div class="board" id="board"></div>
+
+<div class="pool-wrap">
+  <div class="pool-head">
+    <h2>未配置の曲・アルバム・アーティスト</h2>
+    <div style="display:flex;gap:8px">
+      <button class="btn ghost" id="resetBtn">リセット</button>
+      <button class="btn ghost" id="addTierBtn">+ ティア追加</button>
+    </div>
+  </div>
+  <div class="pool" id="pool"></div>
+</div>
+
+<div class="search-wrap">
+  <h2>🔍 曲を検索して追加(ジャケ写・リンク自動付与)</h2>
+  <div class="search-row">
+    <input type="text" id="searchInput" placeholder="曲名やアーティスト名で検索(例:YOASOBI アイドル)">
+    <button class="btn" id="searchBtn">検索</button>
+  </div>
+  <div class="search-status" id="searchStatus"></div>
+  <div class="results" id="results"></div>
+  <h2 style="margin-top:14px">🔗 リンクから追加(ジャケ写・サムネを自動取得)</h2>
+  <div class="search-row">
+    <input type="text" id="linkInput" placeholder="SpotifyかYouTubeのリンクを貼り付け">
+    <button class="btn" id="linkBtn">追加</button>
+  </div>
+  <div class="search-status" id="linkStatus"></div>
+</div>
+
+<details class="manual">
+  <summary>手動でカードを追加する(検索に出ない曲・自作曲など)</summary>
+  <div class="add-form">
+    <input type="text" id="nameInput" placeholder="曲名 / アルバム名 / アーティスト名" maxlength="30">
+    <button class="btn ghost" id="imgBtn">画像</button>
+    <input type="file" id="imgInput" accept="image/*">
+    <button class="btn" id="addBtn">追加</button>
+    <input type="text" id="urlInput" style="flex-basis:100%" placeholder="SpotifyかYouTubeのリンク(任意)">
+  </div>
+</details>
+
+<p class="hint">
+  <b>編集モード</b>:カードをタップで選択 → ティアをタップで移動(PCはドラッグ&ドロップも可)。<br>
+  <b>完成モード</b>:カードをタップ → 30秒試聴 / Spotify / YouTube で開ける。
+</p>
+
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet" id="sheet">
+  <h3 id="sheetTitle"></h3>
+  <div class="artist" id="sheetArtist"></div>
+  <div class="links">
+    <button class="preview-btn" id="previewBtn">▶ 試聴</button>
+    <a class="open-spotify" id="spotifyLink" target="_blank" rel="noopener">Spotify</a>
+    <a class="open-youtube" id="youtubeLink" target="_blank" rel="noopener">YouTube</a>
+  </div>
+  <p class="note" id="sheetNote"></p>
+</div>
+
+<script>
+(() => {
+  const board = document.getElementById('board');
+  const pool = document.getElementById('pool');
+  const nameInput = document.getElementById('nameInput');
+  const urlInput = document.getElementById('urlInput');
+  const imgInput = document.getElementById('imgInput');
+  const imgBtn = document.getElementById('imgBtn');
+  const addBtn = document.getElementById('addBtn');
+  const addTierBtn = document.getElementById('addTierBtn');
+  const modeBtn = document.getElementById('modeBtn');
+  const sheet = document.getElementById('sheet');
+  const sheetBg = document.getElementById('sheetBg');
+  const sheetTitle = document.getElementById('sheetTitle');
+  const sheetArtist = document.getElementById('sheetArtist');
+  const spotifyLink = document.getElementById('spotifyLink');
+  const youtubeLink = document.getElementById('youtubeLink');
+  const sheetNote = document.getElementById('sheetNote');
+  const previewBtn = document.getElementById('previewBtn');
+  const searchInput = document.getElementById('searchInput');
+  const searchBtn = document.getElementById('searchBtn');
+  const results = document.getElementById('results');
+  const searchStatus = document.getElementById('searchStatus');
+
+  let pendingImage = null;
+  let selected = null;
+  let idSeq = 0;
+  let playMode = false;
+  const audio = new Audio();
+  audio.addEventListener('ended', () => previewBtn.classList.remove('playing'));
+
+  const tierColors = ['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#b197fc','#f783ac'];
+  const defaultTiers = ['S','A','B','C','D'];
+
+  // ---- モード切替 ----
+  function setPlayMode(v){
+    playMode = v;
+    document.body.classList.toggle('playmode', playMode);
+    modeBtn.textContent = playMode ? '✎ 編集モードへ' : '▶ 完成モードへ';
+    deselect();
+    closeSheet();
+  }
+  modeBtn.onclick = () => setPlayMode(!playMode);
+
+  // ---- 検索 ----
+  // ★ Cloudflare WorkerをデプロイしたらここにURLを貼る!
+  //    例: const API_BASE = 'https://music-tier.あなたの名前.workers.dev';
+  //    空のままだとiTunes検索で動く(サーバーなしでもOK)
+  const API_BASE = '';
+
+  function renderResults(list){
+    searchStatus.textContent = list.length ? '' : '見つからなかった…別のキーワードで試してみて';
+    list.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'result';
+      card.innerHTML =
+        '<img src="' + t.image + '" alt="">' +
+        '<div class="meta"><div class="t"></div><div class="ar"></div></div>' +
+        '<span class="add-tag">+ 追加</span>';
+      card.querySelector('.t').textContent = t.name;
+      card.querySelector('.ar').textContent = t.artist;
+      card.onclick = () => {
+        pool.appendChild(makeItem(t.name, t.image, t.url, t.artist, t.preview));
+        card.style.opacity = '.35';
+        card.style.pointerEvents = 'none';
+      };
+      results.appendChild(card);
+    });
+  }
+
+  async function doSearch(){
+    const q = searchInput.value.trim();
+    if(!q) return;
+    searchStatus.textContent = '検索中…';
+    results.innerHTML = '';
+    try{
+      if(API_BASE){
+        // 自分のサーバー経由でSpotify公式検索
+        const res = await fetch(API_BASE.replace(/\/$/,'') + '/search?q=' + encodeURIComponent(q));
+        const data = await res.json();
+        if(data.error) throw new Error(data.error);
+        renderResults(data.tracks || []);
+      }else{
+        // サーバー未設定時はiTunes検索
+        const res = await fetch('https://itunes.apple.com/search?media=music&entity=song&country=JP&limit=12&term=' + encodeURIComponent(q));
+        const data = await res.json();
+        renderResults((data.results || []).map(t => ({
+          name: t.trackName,
+          artist: t.artistName,
+          image: (t.artworkUrl100 || '').replace('100x100','300x300'),
+          url: '',
+          preview: t.previewUrl || ''
+        })));
+      }
+    }catch(err){
+      searchStatus.textContent = '検索に失敗… 通信環境を確認するか、このファイルをブラウザで直接開いて試してみて';
+    }
+  }
+  searchBtn.onclick = doSearch;
+  searchInput.addEventListener('keydown', e => { if(e.key === 'Enter') doSearch(); });
+
+  // ---- リンクから追加(ジャケ写・サムネ自動取得) ----
+  const linkInput = document.getElementById('linkInput');
+  const linkBtn = document.getElementById('linkBtn');
+  const linkStatus = document.getElementById('linkStatus');
+
+  function extractYouTubeId(url){
+    const m = url.match(/(?:youtube\.com\/(?:watch\?.*?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{6,20})/);
+    return m ? m[1] : '';
+  }
+
+  async function fetchJson(url){
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(res.status);
+    return res.json();
+  }
+
+  async function addFromLink(){
+    let url = linkInput.value.trim();
+    if(!url) return;
+    if(!/^https?:\/\//.test(url)) url = 'https://' + url;
+    linkStatus.textContent = '取得中…';
+    try{
+      let name = '', img = '';
+
+      if(/open\.spotify\.com/.test(url)){
+        // Spotify oEmbed: 鍵なしでジャケ写とタイトルが取れる
+        const d = await fetchJson('https://open.spotify.com/oembed?url=' + encodeURIComponent(url));
+        name = d.title || 'Spotify';
+        img = d.thumbnail_url || '';
+
+      }else if(/(youtube\.com|youtu\.be)/.test(url)){
+        // YouTube: サムネURLは動画IDから組み立てられる
+        const id = extractYouTubeId(url);
+        if(!id) throw new Error('動画IDが見つからない');
+        // 高画質サムネ(黒帯なし)から順に試す。存在しない場合は120x90のダミーが返るので幅で判定
+        img = 'https://img.youtube.com/vi/' + id + '/mqdefault.jpg';
+        for(const q of ['maxresdefault', 'hq720']){
+          const u = 'https://img.youtube.com/vi/' + id + '/' + q + '.jpg';
+          const ok = await new Promise(resolve => {
+            const test = new Image();
+            test.onload = () => resolve(test.naturalWidth > 200);
+            test.onerror = () => resolve(false);
+            test.src = u;
+          });
+          if(ok){ img = u; break; }
+        }
+        // タイトル取得(失敗してもサムネだけで続行)
+        try{
+          const d = await fetchJson('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url));
+          name = d.title || '';
+        }catch(e){
+          try{
+            const d = await fetchJson('https://noembed.com/embed?url=' + encodeURIComponent(url));
+            name = d.title || '';
+          }catch(e2){}
+        }
+        if(!name) name = 'YouTube動画';
+
+      }else{
+        linkStatus.textContent = 'SpotifyかYouTubeのリンクを貼ってね';
+        return;
+      }
+
+      pool.appendChild(makeItem(name, img, url, '', ''));
+      linkInput.value = '';
+      linkStatus.textContent = '';
+    }catch(err){
+      linkStatus.textContent = '取得に失敗… リンクが正しいか確認してみて';
+    }
+  }
+  linkBtn.onclick = addFromLink;
+  linkInput.addEventListener('keydown', e => { if(e.key === 'Enter') addFromLink(); });
+
+  // ---- 再生シート ----
+  function openSheet(item){
+    const name = item.dataset.name;
+    const artist = item.dataset.artist || '';
+    const url = item.dataset.url || '';
+    const preview = item.dataset.preview || '';
+    sheetTitle.textContent = name;
+    sheetArtist.textContent = artist;
+
+    const isSpotify = /open\.spotify\.com/.test(url);
+    const isYoutube = /(youtube\.com|youtu\.be)/.test(url);
+    const q = encodeURIComponent(artist ? name + ' ' + artist : name);
+
+    if(isSpotify){
+      // Spotifyのリンク → Spotifyボタンだけ
+      spotifyLink.href = url;
+      spotifyLink.style.display = '';
+      youtubeLink.style.display = 'none';
+      sheetNote.textContent = 'Spotifyで開きます';
+    }else if(isYoutube){
+      // YouTubeのリンク → YouTubeボタンだけ
+      youtubeLink.href = url;
+      youtubeLink.style.display = '';
+      spotifyLink.style.display = 'none';
+      sheetNote.textContent = 'YouTubeで開きます';
+    }else{
+      // リンクなし(検索・手動追加)→ 両方の検索ページに飛べる
+      spotifyLink.href = 'https://open.spotify.com/search/' + q;
+      youtubeLink.href = 'https://www.youtube.com/results?search_query=' + q;
+      spotifyLink.style.display = '';
+      youtubeLink.style.display = '';
+      sheetNote.textContent = '曲名+アーティスト名で各サービスを開きます';
+    }
+
+    previewBtn.style.display = preview ? '' : 'none';
+    previewBtn.classList.remove('playing');
+    audio.pause();
+    previewBtn.onclick = () => {
+      if(!audio.paused){
+        audio.pause();
+        previewBtn.classList.remove('playing');
+      }else{
+        audio.src = preview;
+        audio.play();
+        previewBtn.classList.add('playing');
+      }
+    };
+
+    sheet.classList.add('open');
+    sheetBg.classList.add('open');
+  }
+  function closeSheet(){
+    sheet.classList.remove('open');
+    sheetBg.classList.remove('open');
+    audio.pause();
+    previewBtn.classList.remove('playing');
+  }
+  sheetBg.onclick = closeSheet;
+
+  // ---- ティア ----
+  function makeTier(label, color){
+    const tier = document.createElement('div');
+    tier.className = 'tier';
+    tier.innerHTML = '<div class="tier-label" contenteditable="true" spellcheck="false"></div>' +
+      '<div class="tier-items"></div>' +
+      '<div class="tier-tools">' +
+        '<button class="up" title="上へ">▲</button>' +
+        '<button class="down" title="下へ">▼</button>' +
+        '<button class="rm" title="削除">✕</button>' +
+      '</div>';
+    const labelEl = tier.querySelector('.tier-label');
+    labelEl.textContent = label;
+    labelEl.style.background = color;
+    const items = tier.querySelector('.tier-items');
+    bindDropZone(items, tier);
+    tier.querySelector('.up').onclick = () => { if(tier.previousElementSibling) board.insertBefore(tier, tier.previousElementSibling); };
+    tier.querySelector('.down').onclick = () => { if(tier.nextElementSibling) board.insertBefore(tier.nextElementSibling, tier); };
+    tier.querySelector('.rm').onclick = () => {
+      [...items.children].forEach(it => pool.appendChild(it));
+      tier.remove();
+    };
+    return tier;
+  }
+
+  // ---- カード ----
+  function makeItem(name, imgSrc, url, artist, preview){
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.draggable = true;
+    el.id = 'item-' + (++idSeq);
+    el.dataset.name = name;
+    el.dataset.url = url || '';
+    el.dataset.artist = artist || '';
+    el.dataset.preview = preview || '';
+
+    if(imgSrc){
+      const img = document.createElement('img');
+      img.src = imgSrc; img.alt = '';
+      // 画像の縦横比を読み取る(「画像に合わせる」モード用)
+      img.onload = () => {
+        if(!img.naturalWidth || !img.naturalHeight) return;
+        const r = img.naturalWidth / img.naturalHeight;
+        el.style.aspectRatio = Math.min(Math.max(r, 0.75), 1.85);
+        el.classList.toggle('is-wide', r > 1.15);
+      };
+      el.appendChild(img);
+    }
+    const nm = document.createElement('div');
+    nm.className = 'name';
+    nm.textContent = name;
+    el.appendChild(nm);
+
+    const del = document.createElement('button');
+    del.className = 'del'; del.textContent = '✕';
+    del.onclick = (e) => { e.stopPropagation(); el.remove(); if(selected===el) selected=null; };
+    el.appendChild(del);
+
+    el.addEventListener('click', (e) => {
+      if(playMode){
+        e.stopPropagation();
+        openSheet(el);
+        return;
+      }
+      if(selected === el){ deselect(); return; }
+      deselect();
+      selected = el;
+      el.classList.add('selected');
+    });
+    el.addEventListener('dragstart', (e) => {
+      if(playMode){ e.preventDefault(); return; }
+      e.dataTransfer.setData('text/plain', el.id);
+      deselect();
+    });
+    return el;
+  }
+
+  function deselect(){
+    if(selected){ selected.classList.remove('selected'); selected = null; }
+  }
+
+  function bindDropZone(zone, highlightEl){
+    const hl = highlightEl || zone;
+    zone.addEventListener('dragover', (e) => {
+      if(playMode) return;
+      e.preventDefault(); hl.classList.add('droppable');
+    });
+    zone.addEventListener('dragleave', () => hl.classList.remove('droppable'));
+    zone.addEventListener('drop', (e) => {
+      if(playMode) return;
+      e.preventDefault();
+      hl.classList.remove('droppable');
+      const id = e.dataTransfer.getData('text/plain');
+      const item = document.getElementById(id);
+      if(item) zone.appendChild(item);
+    });
+    zone.addEventListener('click', (e) => {
+      if(playMode || !selected) return;
+      if(e.target.closest('.item')) return;
+      zone.appendChild(selected);
+      deselect();
+    });
+  }
+
+  // ============================================
+  // 自動保存(localStorage)と URL共有
+  // ============================================
+  bindDropZone(pool);
+  const SAVE_KEY = 'musicTierMaker:v1';
+  const IMODE_KEY = 'musicTierMaker:imode';
+
+  // ---- アイコン形状モード ----
+  let imode = 'square';
+  function setImode(m){
+    if(!['square','wide','auto'].includes(m)) m = 'square';
+    imode = m;
+    document.body.classList.remove('imode-square','imode-wide','imode-auto');
+    document.body.classList.add('imode-' + m);
+    document.querySelectorAll('.im-btn').forEach(b => b.classList.toggle('active', b.dataset.m === m));
+    try{ localStorage.setItem(IMODE_KEY, m); }catch(e){}
+  }
+  document.querySelectorAll('.im-btn').forEach(b => { b.onclick = () => setImode(b.dataset.m); });
+  const shareBtn = document.getElementById('shareBtn');
+  const shareStatus = document.getElementById('shareStatus');
+  const sharedBanner = document.getElementById('sharedBanner');
+  const adoptBtn = document.getElementById('adoptBtn');
+  const backToMineBtn = document.getElementById('backToMineBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  let autosaveEnabled = true;
+
+  // 今の盤面をデータ化する
+  function itemData(el){
+    const img = el.querySelector('img');
+    return {
+      n: el.dataset.name || '',
+      a: el.dataset.artist || '',
+      u: el.dataset.url || '',
+      v: el.dataset.preview || '',
+      g: img ? img.src : ''
+    };
+  }
+  function getState(){
+    return {
+      t: [...board.children].map(tier => ({
+        l: tier.querySelector('.tier-label').textContent,
+        c: tier.querySelector('.tier-label').style.background,
+        i: [...tier.querySelector('.tier-items').children].map(itemData)
+      })),
+      p: [...pool.children].map(itemData)
+    };
+  }
+
+  // データから盤面を復元する
+  function itemFromData(d){
+    return makeItem(d.n || '???', d.g || '', d.u || '', d.a || '', d.v || '');
+  }
+  function applyState(st){
+    board.innerHTML = '';
+    pool.innerHTML = '';
+    (st.t || []).forEach(td => {
+      const tier = makeTier(td.l || '?', td.c || tierColors[0]);
+      board.appendChild(tier);
+      const zone = tier.querySelector('.tier-items');
+      (td.i || []).forEach(d => zone.appendChild(itemFromData(d)));
+    });
+    (st.p || []).forEach(d => pool.appendChild(itemFromData(d)));
+  }
+
+  // 自動保存(操作のたびに少し待ってから保存)
+  function save(){
+    if(!autosaveEnabled) return;
+    try{
+      localStorage.setItem(SAVE_KEY, JSON.stringify(getState()));
+    }catch(e){ /* 容量オーバー等は黙ってスキップ */ }
+  }
+  let saveTimer = null;
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 400);
+  }
+  new MutationObserver(scheduleSave).observe(board, {childList:true, subtree:true});
+  new MutationObserver(scheduleSave).observe(pool, {childList:true});
+  board.addEventListener('input', scheduleSave); // ラベル編集
+
+  // 共有URLを作ってコピー
+  shareBtn.onclick = async () => {
+    const st = getState();
+    st.m = imode; // 表示モードも共有に含める
+    // 手動アップロードした画像(データが巨大)はURLに入れられないので外す
+    let dropped = 0;
+    const strip = it => { if(it.g && it.g.startsWith('data:')){ it.g = ''; dropped++; } };
+    st.t.forEach(t => t.i.forEach(strip));
+    st.p.forEach(strip);
+
+    const enc = LZString.compressToEncodedURIComponent(JSON.stringify(st));
+    const url = location.origin + location.pathname + '#d=' + enc;
+    let msg = '✓ 共有URLをコピーした!';
+    if(dropped) msg += '(手動アップロードの画像' + dropped + '枚はURLに入らないので名前だけになるよ)';
+    try{
+      await navigator.clipboard.writeText(url);
+      shareStatus.textContent = msg;
+    }catch(e){
+      // コピーが使えない環境では手動コピー用に表示
+      window.prompt('このURLをコピーして共有してね', url);
+      shareStatus.textContent = '';
+    }
+    setTimeout(() => { shareStatus.textContent = ''; }, 6000);
+  };
+
+  // リセット
+  resetBtn.onclick = () => {
+    if(!window.confirm('ティア表を最初の状態に戻す?(保存データも消えるよ)')) return;
+    try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+    board.innerHTML = '';
+    pool.innerHTML = '';
+    defaultTiers.forEach((t, i) => board.appendChild(makeTier(t, tierColors[i])));
+  };
+
+  // 共有URLで開かれたときのバナー操作
+  adoptBtn.onclick = () => {
+    sharedBanner.classList.remove('show');
+    history.replaceState(null, '', location.pathname);
+    autosaveEnabled = true;
+    save();
+    setPlayMode(false);
+  };
+  backToMineBtn.onclick = () => {
+    sharedBanner.classList.remove('show');
+    history.replaceState(null, '', location.pathname);
+    autosaveEnabled = true;
+    loadMine();
+  };
+
+  function loadMine(){
+    let st = null;
+    try{
+      const raw = localStorage.getItem(SAVE_KEY);
+      if(raw) st = JSON.parse(raw);
+    }catch(e){}
+    if(st && st.t && st.t.length){
+      applyState(st);
+    }else{
+      board.innerHTML = '';
+      pool.innerHTML = '';
+      defaultTiers.forEach((t, i) => board.appendChild(makeTier(t, tierColors[i])));
+    }
+  }
+
+  // ---- 起動処理 ----
+  function init(){
+    const m = location.hash.match(/^#d=(.+)/);
+    if(m){
+      try{
+        const st = JSON.parse(LZString.decompressFromEncodedURIComponent(m[1]));
+        applyState(st);
+        setImode(st.m || 'square'); // 共有元と同じ見た目で表示
+        autosaveEnabled = false; // 共有を見てるだけの間は自分の保存データを守る
+        sharedBanner.classList.add('show');
+        setPlayMode(true);
+        return;
+      }catch(e){ /* 壊れたURLなら通常起動へ */ }
+    }
+    let savedMode = 'square';
+    try{ savedMode = localStorage.getItem(IMODE_KEY) || 'square'; }catch(e){}
+    setImode(savedMode);
+    loadMine();
+  }
+  init();
+
+  addTierBtn.onclick = () => {
+    const i = board.children.length % tierColors.length;
+    board.appendChild(makeTier('NEW', tierColors[i]));
+  };
+
+  imgBtn.onclick = () => imgInput.click();
+  imgInput.onchange = () => {
+    const f = imgInput.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      pendingImage = r.result;
+      imgBtn.textContent = '画像✓';
+    };
+    r.readAsDataURL(f);
+  };
+
+  function addItem(){
+    const name = nameInput.value.trim();
+    if(!name && !pendingImage) return;
+    let url = urlInput.value.trim();
+    if(url && !/^https?:\/\//.test(url)) url = 'https://' + url;
+    pool.appendChild(makeItem(name || '???', pendingImage, url, '', ''));
+    nameInput.value = '';
+    urlInput.value = '';
+    pendingImage = null;
+    imgBtn.textContent = '画像';
+    imgInput.value = '';
+    nameInput.focus();
+  }
+  addBtn.onclick = addItem;
+  nameInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') addItem(); });
+  urlInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') addItem(); });
+})();
+</script>
+</body>
+</html>
