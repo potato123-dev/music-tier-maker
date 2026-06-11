@@ -12,6 +12,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Monoton&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
     --bg:#16121f;
@@ -322,6 +323,7 @@
   <div class="eq" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <button class="mode-btn" id="modeBtn">▶ 完成モードへ</button>
   <button class="share-btn" id="shareBtn">🔗 共有</button>
+  <button class="share-btn" id="imgSaveBtn" style="background:var(--panel2);color:var(--text);border:1px solid var(--line)">📷 画像保存</button>
 </header>
 
 <div class="share-status" id="shareStatus"></div>
@@ -838,6 +840,32 @@
       shareStatus.textContent = '';
     }
     setTimeout(() => { shareStatus.textContent = ''; }, 6000);
+  };
+
+  // ティア表を画像でダウンロード
+  const imgSaveBtn = document.getElementById('imgSaveBtn');
+  imgSaveBtn.onclick = async () => {
+    shareStatus.textContent = '画像を作成中…(ちょっと待ってね)';
+    try{
+      const canvas = await html2canvas(board, {
+        backgroundColor: '#16121f',
+        useCORS: true,   // ジャケ写・サムネも画像に含める
+        scale: 2,        // 高解像度で出力
+        onclone: (doc) => {
+          // 画像には編集用のボタン類と選択枠を入れない
+          doc.querySelectorAll('.tier-tools').forEach(e => e.style.display = 'none');
+          doc.querySelectorAll('.item.selected').forEach(e => e.classList.remove('selected'));
+        }
+      });
+      const a = document.createElement('a');
+      a.download = 'music-tier.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+      shareStatus.textContent = '✓ 画像を保存した!';
+    }catch(e){
+      shareStatus.textContent = '画像の作成に失敗… もう一度試してみて';
+    }
+    setTimeout(() => { shareStatus.textContent = ''; }, 5000);
   };
 
   // リセット
