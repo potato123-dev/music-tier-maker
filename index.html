@@ -659,6 +659,23 @@
   }
 
   // ---- カード ----
+  function setItemImage(el, src){
+    if(!src) return;
+    let img = el.querySelector('img');
+    if(!img){
+      img = document.createElement('img');
+      img.alt = '';
+      img.onload = () => {
+        if(!img.naturalWidth || !img.naturalHeight) return;
+        const r = img.naturalWidth / img.naturalHeight;
+        el.style.aspectRatio = Math.min(Math.max(r, 0.75), 1.85);
+        el.classList.toggle('is-wide', r > 1.15);
+      };
+      el.insertBefore(img, el.firstChild);
+    }
+    img.src = src;
+  }
+
   function makeItem(name, imgSrc, url, artist, preview){
     const el = document.createElement('div');
     el.className = 'item';
@@ -669,18 +686,7 @@
     el.dataset.artist = artist || '';
     el.dataset.preview = preview || '';
 
-    if(imgSrc){
-      const img = document.createElement('img');
-      img.src = imgSrc; img.alt = '';
-      // 画像の縦横比を読み取る(「画像に合わせる」モード用)
-      img.onload = () => {
-        if(!img.naturalWidth || !img.naturalHeight) return;
-        const r = img.naturalWidth / img.naturalHeight;
-        el.style.aspectRatio = Math.min(Math.max(r, 0.75), 1.85);
-        el.classList.toggle('is-wide', r > 1.15);
-      };
-      el.appendChild(img);
-    }
+    setItemImage(el, imgSrc);
     const nm = document.createElement('div');
     nm.className = 'name';
     nm.textContent = name;
@@ -787,7 +793,114 @@
 
   // データから盤面を復元する
   function itemFromData(d){
-    return makeItem(d.n || '???', d.g || '', d.u || '', d.a || '', d.v || '');
+    let g = d.g || '';
+    const u = d.u || '';
+    // 画像URLが省略されている場合はリンクから復元(共有URLを短くするための仕組み)
+    if(!g && u && /(youtube\.com|youtu\.be)/.test(u)){
+      const id = extractYouTubeId(u);
+      if(id) g = 'https://img.youtube.com/vi/' + id + '/mqdefault.jpg';
+    }
+    const el = makeItem(d.n || '???', g, u, d.a || '', d.v || '');
+    if(!g && u && /open\.spotify\.com/.test(u)){
+      // Spotifyはジャケ写を取り直す(取得できるまでは無地カード)
+      fetchJson('https://open.spotify.com/oembed?url=' + encodeURIComponent(u))
+        .then(r => setItemImage(el, r.thumbnail_url || ''))
+        .catch(() => {});
+    }
+    return el;
+  }
+
+  // ---- 共有専用の超圧縮フォーマット ----
+  // リンク付きカードはIDだけの文字列にする:
+  //   "y動画ID" = YouTube / "st:トラックID" = Spotify(2文字目が種類)
+  // タイトルとジャケ写は開いた側が各サービスから取り直す
+  const SP_TYPES = {t:'track', a:'album', p:'playlist', r:'artist', e:'episode', h:'show'};
+  const SP_LETTERS = {track:'t', album:'a', playlist:'p', artist:'r', episode:'e', show:'h'};
+
+  function setItemName(el, name){
+    el.dataset.name = name;
+    const nm = el.querySelector('.name');
+    if(nm) nm.textContent = name;
+  }
+
+  function compactItem(el, counter){
+    const u = el.dataset.url || '';
+    const ytId = u ? extractYouTubeId(u) : '';
+    if(ytId) return 'y' + ytId;
+    const sp = u.match(/open\.spotify\.com\/(?:intl-[a-z-]+\/)?(track|album|playlist|artist|episode|show)\/([A-Za-z0-9]+)/);
+    if(sp) return 's' + (SP_LETTERS[sp[1]] || 't') + ':' + sp[2];
+    // リンクなしカード(検索・手動)は名前ベースで送る
+    const o = { n: el.dataset.name || '' };
+    if(el.dataset.artist) o.a = el.dataset.artist;
+    const img = el.querySelector('img');
+    if(img && img.src){
+      if(img.src.startsWith('data:')) counter.dropped++;
+      else o.g = img.src;
+    }
+    return o;
+  }
+
+  function expandItem(d){
+    if(typeof d === 'string'){
+      if(d[0] === 'y'){
+        const id = d.slice(1);
+        const url = 'https://youtu.be/' + id;
+        const el = makeItem('…', 'https://img.youtube.com/vi/' + id + '/mqdefault.jpg', url, '', '');
+        (async () => {
+          try{
+            const r = await fetchJson('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url));
+            if(r.title) return setItemName(el, r.title);
+          }catch(e){}
+          try{
+            const r = await fetchJson('https://noembed.com/embed?url=' + encodeURIComponent(url));
+            if(r.title) return setItemName(el, r.title);
+          }catch(e){}
+          setItemName(el, 'YouTube動画');
+        })();
+        return el;
+      }
+      if(d[0] === 's'){
+        const type = SP_TYPES[d[1]] || 'track';
+        const id = d.slice(3);
+        const url = 'https://open.spotify.com/' + type + '/' + id;
+        const el = makeItem('…', '', url, '', '');
+        fetchJson('https://open.spotify.com/oembed?url=' + encodeURIComponent(url))
+          .then(r => {
+            setItemImage(el, r.thumbnail_url || '');
+            if(r.title) setItemName(el, r.title);
+          })
+          .catch(() => setItemName(el, 'Spotify'));
+        return el;
+      }
+    }
+    return itemFromData(d || {});
+  }
+
+  // ティアの色もパレット番号1文字に圧縮
+  const rgbPalette = tierColors.map(h => {
+    const n = parseInt(h.slice(1), 16);
+    return 'rgb(' + (n>>16) + ', ' + ((n>>8)&255) + ', ' + (n&255) + ')';
+  });
+  function packColor(c){
+    let i = rgbPalette.indexOf(c);
+    if(i < 0) i = tierColors.indexOf(c);
+    return i >= 0 ? i : c;
+  }
+  function unpackColor(c){
+    return (typeof c === 'number') ? (tierColors[c] || tierColors[0]) : (c || tierColors[0]);
+  }
+
+  function applyShared(st){
+    board.innerHTML = '';
+    pool.innerHTML = '';
+    (st.t || []).forEach(td => {
+      const tier = makeTier(td.l || '?', unpackColor(td.c));
+      board.appendChild(tier);
+      const zone = tier.querySelector('.tier-items');
+      (td.i || []).forEach(d => zone.appendChild(expandItem(d)));
+    });
+    (st.p || []).forEach(d => pool.appendChild(expandItem(d)));
+    setImode(st.m || 'square');
   }
   function applyState(st){
     board.innerHTML = '';
@@ -817,20 +930,27 @@
   new MutationObserver(scheduleSave).observe(pool, {childList:true});
   board.addEventListener('input', scheduleSave); // ラベル編集
 
-  // 共有URLを作ってコピー
+  // 共有URLを作ってコピー(超圧縮版)
   shareBtn.onclick = async () => {
-    const st = getState();
-    st.m = imode; // 表示モードも共有に含める
-    // 手動アップロードした画像(データが巨大)はURLに入れられないので外す
-    let dropped = 0;
-    const strip = it => { if(it.g && it.g.startsWith('data:')){ it.g = ''; dropped++; } };
-    st.t.forEach(t => t.i.forEach(strip));
-    st.p.forEach(strip);
+    const counter = { dropped: 0 };
+    const st = {
+      t: [...board.children].map(tier => {
+        const td = {
+          l: tier.querySelector('.tier-label').textContent,
+          c: packColor(tier.querySelector('.tier-label').style.background),
+          i: [...tier.querySelector('.tier-items').children].map(el => compactItem(el, counter))
+        };
+        return td;
+      })
+    };
+    const poolItems = [...pool.children].map(el => compactItem(el, counter));
+    if(poolItems.length) st.p = poolItems;
+    if(imode !== 'square') st.m = imode;
 
     const enc = LZString.compressToEncodedURIComponent(JSON.stringify(st));
-    const url = location.origin + location.pathname + '#d=' + enc;
+    const url = location.origin + location.pathname + '#s=' + enc;
     let msg = '✓ 共有URLをコピーした!';
-    if(dropped) msg += '(手動アップロードの画像' + dropped + '枚はURLに入らないので名前だけになるよ)';
+    if(counter.dropped) msg += '(手動アップロードの画像' + counter.dropped + '枚は名前だけになるよ)';
     try{
       await navigator.clipboard.writeText(url);
       shareStatus.textContent = msg;
@@ -909,13 +1029,26 @@
 
   // ---- 起動処理 ----
   function init(){
+    // 新フォーマット(超圧縮)の共有URL
+    const s = location.hash.match(/^#s=(.+)/);
+    if(s){
+      try{
+        const st = JSON.parse(LZString.decompressFromEncodedURIComponent(s[1]));
+        applyShared(st);
+        autosaveEnabled = false; // 共有を見てるだけの間は自分の保存データを守る
+        sharedBanner.classList.add('show');
+        setPlayMode(true);
+        return;
+      }catch(e){ /* 壊れたURLなら通常起動へ */ }
+    }
+    // 旧フォーマットの共有URL(以前に配ったリンクも開けるように残す)
     const m = location.hash.match(/^#d=(.+)/);
     if(m){
       try{
         const st = JSON.parse(LZString.decompressFromEncodedURIComponent(m[1]));
         applyState(st);
-        setImode(st.m || 'square'); // 共有元と同じ見た目で表示
-        autosaveEnabled = false; // 共有を見てるだけの間は自分の保存データを守る
+        setImode(st.m || 'square');
+        autosaveEnabled = false;
         sharedBanner.classList.add('show');
         setPlayMode(true);
         return;
