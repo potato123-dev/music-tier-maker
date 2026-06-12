@@ -203,6 +203,7 @@
   .item .mv.r{right:1px}
   .item.selected .mv{display:block}
   body.playmode .item .mv{display:none}
+  .item.dragging{opacity:.3}
 
   .pool-wrap{max-width:900px;margin:14px auto 0}
   .pool-head{
@@ -394,7 +395,7 @@
 </details>
 
 <p class="hint">
-  <b>編集モード</b>:カードをタップで選択 → ティアをタップで移動(PCはドラッグ&ドロップも可)。<br>
+  <b>編集モード</b>:カードを<b>長押し</b>するとつかめるので、そのままドラッグして好きなティアへ(タップで選択→ティアをタップでも移動できる)。<br>
   <b>完成モード</b>:カードをタップ → 30秒試聴 / Spotify / YouTube で開ける。
 </p>
 
@@ -727,6 +728,7 @@
     el.appendChild(mvr);
 
     el.addEventListener('click', (e) => {
+      if(suppressClick) return; // ドラッグ直後のタップは無視
       if(playMode){
         e.stopPropagation();
         openSheet(el);
@@ -736,6 +738,11 @@
       deselect();
       selected = el;
       el.classList.add('selected');
+    });
+    el.addEventListener('pointerdown', (e) => {
+      // スマホ・タブレットは長押しドラッグ(マウスは従来のドラッグ&ドロップ)
+      if(playMode || e.pointerType === 'mouse') return;
+      startTouchDrag(el, e);
     });
     el.addEventListener('dragstart', (e) => {
       if(playMode){ e.preventDefault(); return; }
@@ -748,6 +755,77 @@
   function deselect(){
     if(selected){ selected.classList.remove('selected'); selected = null; }
   }
+
+  // ---- スマホ用ドラッグ&ドロップ(カードを長押しでつかむ) ----
+  let tdrag = null;
+  let suppressClick = false;
+
+  function clearDropHighlights(){
+    document.querySelectorAll('.droppable').forEach(z => z.classList.remove('droppable'));
+  }
+
+  function startTouchDrag(el, e){
+    tdrag = { el, x: e.clientX, y: e.clientY, active: false };
+    tdrag.timer = setTimeout(() => {
+      if(!tdrag || tdrag.el !== el) return;
+      deselect();
+      const r = el.getBoundingClientRect();
+      const ghost = el.cloneNode(true);
+      ghost.style.cssText = 'position:fixed;z-index:200;pointer-events:none;opacity:.92;margin:0;'
+        + 'width:' + r.width + 'px;height:' + r.height + 'px;'
+        + 'left:' + r.left + 'px;top:' + r.top + 'px;'
+        + 'transform:scale(1.08);box-shadow:0 10px 26px rgba(0,0,0,.55);border-radius:10px;overflow:hidden;';
+      document.body.appendChild(ghost);
+      tdrag.ghost = ghost;
+      tdrag.dx = tdrag.x - r.left;
+      tdrag.dy = tdrag.y - r.top;
+      tdrag.active = true;
+      el.classList.add('dragging');
+      if(navigator.vibrate) navigator.vibrate(30); // つかんだ合図(対応端末のみ)
+    }, 220);
+  }
+
+  document.addEventListener('pointermove', (e) => {
+    if(!tdrag) return;
+    if(!tdrag.active){
+      // 長押し前に指が大きく動いた=スクロールしたいだけなのでキャンセル
+      if(Math.hypot(e.clientX - tdrag.x, e.clientY - tdrag.y) > 12){
+        clearTimeout(tdrag.timer);
+        tdrag = null;
+      }
+      return;
+    }
+    tdrag.ghost.style.left = (e.clientX - tdrag.dx) + 'px';
+    tdrag.ghost.style.top = (e.clientY - tdrag.dy) + 'px';
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const zone = under && (under.closest('.tier-items') || under.closest('.pool'));
+    clearDropHighlights();
+    if(zone) (zone.closest('.tier') || zone).classList.add('droppable');
+  });
+
+  function endTouchDrag(e){
+    if(!tdrag) return;
+    clearTimeout(tdrag.timer);
+    if(tdrag.active){
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      const zone = under && (under.closest('.tier-items') || under.closest('.pool'));
+      if(zone) zone.appendChild(tdrag.el);
+      tdrag.ghost.remove();
+      tdrag.el.classList.remove('dragging');
+      clearDropHighlights();
+      // ドラッグ直後の誤タップ(選択発動)を防ぐ
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 400);
+    }
+    tdrag = null;
+  }
+  document.addEventListener('pointerup', endTouchDrag);
+  document.addEventListener('pointercancel', endTouchDrag);
+
+  // ドラッグ中は画面スクロールを止める
+  document.addEventListener('touchmove', (e) => {
+    if(tdrag && tdrag.active) e.preventDefault();
+  }, { passive: false });
 
   function bindDropZone(zone, highlightEl){
     const hl = highlightEl || zone;
