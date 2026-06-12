@@ -820,16 +820,34 @@
     };
   }
 
+  // YouTubeサムネを高画質版に差し替える(存在チェック付き・非同期)
+  function upgradeYouTubeThumb(el, id){
+    (async () => {
+      for(const q of ['maxresdefault', 'hq720']){
+        const u = 'https://img.youtube.com/vi/' + id + '/' + q + '.jpg';
+        const ok = await new Promise(resolve => {
+          const t = new Image();
+          t.onload = () => resolve(t.naturalWidth > 200);
+          t.onerror = () => resolve(false);
+          t.src = u;
+        });
+        if(ok){ setItemImage(el, u); return; }
+      }
+    })();
+  }
+
   // データから盤面を復元する
   function itemFromData(d){
     let g = d.g || '';
     const u = d.u || '';
+    let ytId = '';
     // 画像URLが省略されている場合はリンクから復元(共有URLを短くするための仕組み)
     if(!g && u && /(youtube\.com|youtu\.be)/.test(u)){
-      const id = extractYouTubeId(u);
-      if(id) g = 'https://img.youtube.com/vi/' + id + '/mqdefault.jpg';
+      ytId = extractYouTubeId(u);
+      if(ytId) g = 'https://img.youtube.com/vi/' + ytId + '/mqdefault.jpg';
     }
     const el = makeItem(d.n || '???', g, u, d.a || '', d.v || '');
+    if(ytId) upgradeYouTubeThumb(el, ytId); // ウラで高画質版に差し替え
     if(!g && u && /open\.spotify\.com/.test(u)){
       // Spotifyはジャケ写を取り直す(取得できるまでは無地カード)
       fetchJson('https://open.spotify.com/oembed?url=' + encodeURIComponent(u))
@@ -875,6 +893,7 @@
         const id = d.slice(1);
         const url = 'https://youtu.be/' + id;
         const el = makeItem('…', 'https://img.youtube.com/vi/' + id + '/mqdefault.jpg', url, '', '');
+        upgradeYouTubeThumb(el, id); // ウラで高画質版に差し替え
         (async () => {
           try{
             const r = await fetchJson('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url));
@@ -1057,7 +1076,7 @@
       const canvas = await html2canvas(board, {
         backgroundColor: '#16121f',
         useCORS: true,   // ジャケ写・サムネも画像に含める
-        scale: 2,        // 高解像度で出力
+        scale: 3,        // 高解像度で出力
         onclone: (doc) => {
           // 画像には編集用のボタン類と選択枠を入れない
           doc.querySelectorAll('.tier-tools').forEach(e => e.style.display = 'none');
@@ -1073,6 +1092,19 @@
             d.style.backgroundPosition = 'center';
             img.replaceWith(d);
           });
+          // ロゴとサイトURLを画像の上部に入れる(宣伝用)
+          const clonedBoard = doc.getElementById('board');
+          const head = doc.createElement('div');
+          head.style.cssText = 'display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:6px 4px 10px;';
+          const logo = doc.createElement('span');
+          logo.textContent = 'MUSIC TIER';
+          logo.style.cssText = "font-family:'Monoton',cursive;font-size:26px;color:#ff5c8a;letter-spacing:2px;";
+          const link = doc.createElement('span');
+          link.textContent = location.origin + location.pathname;
+          link.style.cssText = "font-size:13px;color:#a99cc4;font-weight:700;";
+          head.appendChild(logo);
+          head.appendChild(link);
+          clonedBoard.insertBefore(head, clonedBoard.firstChild);
         }
       });
       const a = document.createElement('a');
