@@ -54,25 +54,33 @@
   .eq span:nth-child(3){animation-delay:.3s;background:#69db7c}
   .eq span:nth-child(4){animation-delay:.45s;background:#4dabf7}
   @keyframes eq{0%,100%{height:30%}50%{height:100%}}
-  @media (prefers-reduced-motion: reduce){.eq span{animation:none;height:70%}}
 
   .mode-btn{
     margin-left:auto;
-    background:var(--panel2);color:var(--text);
-    border:1px solid var(--line);border-radius:999px;
-    padding:8px 16px;font-family:inherit;font-weight:800;
+    background:var(--spotify);color:#0d1a10;
+    border:none;border-radius:999px;
+    padding:8px 18px;font-family:inherit;font-weight:800;
     font-size:13px;cursor:pointer;transition:all .15s;
+    box-shadow:0 0 14px rgba(29,185,84,.35);
   }
-  body.playmode .mode-btn{
-    background:var(--spotify);color:#0d1a10;border-color:var(--spotify);
-    box-shadow:0 0 14px rgba(29,185,84,.4);
+  body.playmode .mode-btn{display:none}
+  .back-edit{
+    display:none;
+    background:none;border:none;color:var(--sub);
+    font-family:inherit;font-weight:700;font-size:13px;
+    cursor:pointer;padding:6px 4px;
   }
+  .back-edit:hover{color:var(--text)}
+  body.playmode .back-edit{display:inline-block}
   .share-btn{
+    display:none;
     background:var(--accent);color:#1c1626;
     border:none;border-radius:999px;
     padding:8px 16px;font-family:inherit;font-weight:800;
     font-size:13px;cursor:pointer;
   }
+  body.playmode .share-btn{display:inline-block}
+  body.playmode #shareBtn{margin-left:auto}
   .share-status{
     max-width:900px;margin:0 auto 10px;
     font-size:12px;color:var(--spotify);font-weight:700;text-align:right;
@@ -330,9 +338,10 @@
 <body>
 
 <header>
+  <button class="back-edit" id="backToEditBtn">← 編集にもどる</button>
   <div class="logo">MUSIC TIER</div>
   <div class="eq" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-  <button class="mode-btn" id="modeBtn">▶ 完成モードへ</button>
+  <button class="mode-btn" id="modeBtn">✓ 完成!</button>
   <button class="share-btn" id="shareBtn">🔗 共有</button>
   <button class="share-btn" id="imgSaveBtn" style="background:var(--panel2);color:var(--text);border:1px solid var(--line)">📷 画像保存</button>
 </header>
@@ -395,8 +404,8 @@
 </details>
 
 <p class="hint">
-  <b>編集モード</b>:カードを<b>長押し</b>するとつかめるので、そのままドラッグして好きなティアへ(タップで選択→ティアをタップでも移動できる)。<br>
-  <b>完成モード</b>:カードをタップ → 30秒試聴 / Spotify / YouTube で開ける。
+  カードを<b>長押し</b>するとつかめるので、そのままドラッグして好きなティアへ(タップで選択→ティアをタップでも移動できる)。<br>
+  できあがったら右上の<b>「✓ 完成!」</b>。共有や画像保存ができて、カードをタップすると曲を開けるよ。直したくなったら左上の「← 編集にもどる」。
 </p>
 
 <div class="sheet-bg" id="sheetBg"></div>
@@ -445,15 +454,16 @@
   const tierColors = ['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#b197fc','#f783ac'];
   const defaultTiers = ['S','A','B','C','D'];
 
-  // ---- モード切替 ----
+  // ---- 完成 / 編集にもどる ----
   function setPlayMode(v){
     playMode = v;
     document.body.classList.toggle('playmode', playMode);
-    modeBtn.textContent = playMode ? '✎ 編集モードへ' : '▶ 完成モードへ';
     deselect();
     closeSheet();
+    if(v) window.scrollTo({top:0, behavior:'smooth'});
   }
-  modeBtn.onclick = () => setPlayMode(!playMode);
+  modeBtn.onclick = () => setPlayMode(true);
+  document.getElementById('backToEditBtn').onclick = () => setPlayMode(false);
 
   // ---- 検索 ----
   // ★ Cloudflare WorkerをデプロイしたらここにURLを貼る!
