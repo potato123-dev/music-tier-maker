@@ -193,6 +193,16 @@
   }
   .item.selected .del{display:block}
   body.playmode .item .del{display:none}
+  .item .mv{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:18px;height:24px;border:none;border-radius:6px;
+    background:rgba(10,8,16,.75);color:#fff;
+    font-size:11px;line-height:1;padding:0;cursor:pointer;display:none;
+  }
+  .item .mv.l{left:1px}
+  .item .mv.r{right:1px}
+  .item.selected .mv{display:block}
+  body.playmode .item .mv{display:none}
 
   .pool-wrap{max-width:900px;margin:14px auto 0}
   .pool-head{
@@ -697,6 +707,25 @@
     del.onclick = (e) => { e.stopPropagation(); el.remove(); if(selected===el) selected=null; };
     el.appendChild(del);
 
+    // 左右移動ボタン(選択中だけ表示)
+    const mvl = document.createElement('button');
+    mvl.className = 'mv l'; mvl.textContent = '◀'; mvl.title = '左へ';
+    mvl.onclick = (e) => {
+      e.stopPropagation();
+      const prev = el.previousElementSibling;
+      if(prev) el.parentNode.insertBefore(el, prev);
+    };
+    el.appendChild(mvl);
+
+    const mvr = document.createElement('button');
+    mvr.className = 'mv r'; mvr.textContent = '▶'; mvr.title = '右へ';
+    mvr.onclick = (e) => {
+      e.stopPropagation();
+      const next = el.nextElementSibling;
+      if(next) el.parentNode.insertBefore(next, el);
+    };
+    el.appendChild(mvr);
+
     el.addEventListener('click', (e) => {
       if(playMode){
         e.stopPropagation();
@@ -1033,6 +1062,17 @@
           // 画像には編集用のボタン類と選択枠を入れない
           doc.querySelectorAll('.tier-tools').forEach(e => e.style.display = 'none');
           doc.querySelectorAll('.item.selected').forEach(e => e.classList.remove('selected'));
+          // 引き延ばし対策: imgタグを背景画像方式に差し替える
+          // (画像化ライブラリがobject-fit:coverを再現できないため)
+          doc.querySelectorAll('.item img').forEach(img => {
+            const d = doc.createElement('div');
+            d.style.width = '100%';
+            d.style.height = '100%';
+            d.style.backgroundImage = "url('" + img.src + "')";
+            d.style.backgroundSize = 'cover';
+            d.style.backgroundPosition = 'center';
+            img.replaceWith(d);
+          });
         }
       });
       const a = document.createElement('a');
