@@ -64,23 +64,25 @@
     box-shadow:0 0 14px rgba(29,185,84,.35);
   }
   body.playmode .mode-btn{display:none}
-  .back-edit{
+  .done-bar{
     display:none;
+    max-width:900px;margin:0 auto 12px;
+    align-items:center;gap:10px;
+  }
+  body.playmode .done-bar{display:flex}
+  .back-edit{
+    margin-right:auto;
     background:none;border:none;color:var(--sub);
     font-family:inherit;font-weight:700;font-size:13px;
     cursor:pointer;padding:6px 4px;
   }
   .back-edit:hover{color:var(--text)}
-  body.playmode .back-edit{display:inline-block}
   .share-btn{
-    display:none;
     background:var(--accent);color:#1c1626;
     border:none;border-radius:999px;
     padding:8px 16px;font-family:inherit;font-weight:800;
     font-size:13px;cursor:pointer;
   }
-  body.playmode .share-btn{display:inline-block}
-  body.playmode #shareBtn{margin-left:auto}
   .share-status{
     max-width:900px;margin:0 auto 10px;
     font-size:12px;color:var(--spotify);font-weight:700;text-align:right;
@@ -338,13 +340,16 @@
 <body>
 
 <header>
-  <button class="back-edit" id="backToEditBtn">← 編集にもどる</button>
   <div class="logo">MUSIC TIER</div>
   <div class="eq" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <button class="mode-btn" id="modeBtn">✓ 完成!</button>
+</header>
+
+<div class="done-bar">
+  <button class="back-edit" id="backToEditBtn">← 編集にもどる</button>
   <button class="share-btn" id="shareBtn">🔗 共有</button>
   <button class="share-btn" id="imgSaveBtn" style="background:var(--panel2);color:var(--text);border:1px solid var(--line)">📷 画像保存</button>
-</header>
+</div>
 
 <div class="share-status" id="shareStatus"></div>
 
