@@ -44,7 +44,10 @@
     letter-spacing:2px;
     color:var(--accent);
     text-shadow:0 0 18px rgba(255,92,138,.45);
+    text-decoration:none;
+    transition:opacity .15s;
   }
+  .logo:hover{opacity:.8}
   .eq{display:flex;align-items:flex-end;gap:3px;height:26px}
   .eq span{
     width:5px;border-radius:2px;background:var(--accent);
@@ -346,7 +349,7 @@
 </div>
 
 <header>
-  <div class="logo">MUSIC TIER</div>
+  <a class="logo" href="index.html" title="ホームへ">MUSIC TIER</a>
   <div class="eq" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <button class="mode-btn" id="modeBtn">✓ 完成!</button>
 </header>
