@@ -533,6 +533,30 @@
   }
   .open-spotify{background:var(--spotify);color:#0d1a10!important}
   .open-apple{background:linear-gradient(135deg,#fa2d48,#fb5c74)}
+  /* 音量スライダー(アンプ風) */
+  .vol{
+    display:none;align-items:center;gap:10px;
+    max-width:300px;margin:2px auto 14px;padding:0 4px;
+  }
+  .vol.show{display:flex}
+  .vol-ic{font-size:14px;opacity:.75;flex:none}
+  #volSlider{
+    -webkit-appearance:none;appearance:none;
+    flex:1;height:6px;border-radius:999px;
+    background:linear-gradient(90deg,var(--accent) 0%,var(--accent) 80%,var(--line) 80%,var(--line) 100%);
+    outline:none;cursor:pointer;
+  }
+  #volSlider::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:18px;height:18px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#fff,#cfc7e0);
+    box-shadow:0 1px 4px rgba(0,0,0,.5);cursor:pointer;
+  }
+  #volSlider::-moz-range-thumb{
+    width:18px;height:18px;border:none;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#fff,#cfc7e0);
+    box-shadow:0 1px 4px rgba(0,0,0,.5);cursor:pointer;
+  }
   .open-youtube{background:var(--youtube)}
   .sheet .note{font-size:11px;color:var(--sub);text-align:center;margin-top:10px}
 </style>
@@ -628,6 +652,11 @@
 
   <h3 id="sheetTitle"></h3>
   <div class="artist" id="sheetArtist"></div>
+  <div class="vol" id="volRow">
+    <span class="vol-ic">🔈</span>
+    <input type="range" id="volSlider" min="0" max="100" value="80">
+    <span class="vol-ic">🔊</span>
+  </div>
   <div class="links">
     <a class="open-spotify" id="spotifyLink" target="_blank" rel="noopener">Spotifyで開く</a>
     <a class="open-apple" id="appleLink" target="_blank" rel="noopener">Apple Musicで開く</a>
@@ -889,9 +918,23 @@
 
   // ---- レコード再生(YouTube) ----
   const record = document.getElementById('record');
+  const volRow = document.getElementById('volRow');
+  const volSlider = document.getElementById('volSlider');
   let ytPlayer = null;
   let ytReady = false;
   let recordPlaying = false;
+
+  // スライダーの塗り(左側だけアクセント色)を値に合わせて更新
+  function paintVol(){
+    const v = volSlider.value;
+    volSlider.style.background =
+      'linear-gradient(90deg,var(--accent) 0%,var(--accent) ' + v + '%,var(--line) ' + v + '%,var(--line) 100%)';
+  }
+  volSlider.addEventListener('input', () => {
+    paintVol();
+    if(ytPlayer && ytReady){ try{ ytPlayer.setVolume(Number(volSlider.value)); }catch(e){} }
+  });
+  paintVol();
 
   // YouTube IFrame APIを読み込む
   (function loadYT(){
@@ -904,13 +947,14 @@
       height: '1', width: '1',
       playerVars: { playsinline: 1 },
       events: {
-        onReady: () => { ytReady = true; },
+        onReady: () => { ytReady = true; try{ ytPlayer.setVolume(Number(volSlider.value)); }catch(e){} },
         onStateChange: (e) => {
           // 再生中だけレコードを回す
           if(e.data === YT.PlayerState.PLAYING){
             record.classList.add('playing');
             record.classList.remove('loading');
             recordPlaying = true;
+            volRow.classList.add('show');
           }else if(e.data === YT.PlayerState.ENDED || e.data === YT.PlayerState.PAUSED){
             record.classList.remove('playing');
             recordPlaying = false;
@@ -924,6 +968,7 @@
     if(ytPlayer && ytReady){ try{ ytPlayer.stopVideo(); }catch(e){} }
     record.classList.remove('playing','loading');
     recordPlaying = false;
+    volRow.classList.remove('show');
   }
 
   async function toggleRecord(ytId, searchQuery){
