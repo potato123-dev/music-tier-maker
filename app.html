@@ -363,11 +363,159 @@
     display:flex;align-items:center;justify-content:center;
     font-size:18px;pointer-events:none;
     transition:opacity .2s;z-index:2;
+    opacity:0;
   }
-  .record.playing .vinyl-play{opacity:0}
   .record.loading .vinyl-play{opacity:1}
   /* 隠しYouTubeプレーヤー(音だけ使う) */
   #ytHost{position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;opacity:0;pointer-events:none}
+
+  /* --- Spotify仕様のレコード --- */
+  .record.spotify .vinyl{
+    background:
+      repeating-radial-gradient(circle at center,
+        #0a1f12 0 2px, #0f2c1a 2px 4px);
+  }
+  .record.spotify .vinyl-play{
+    background:var(--spotify);color:#0d1a10;font-weight:800;
+  }
+  /* Spotifyロゴ(簡易・3本の弧) */
+  .sp-badge{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:26px;height:26px;border-radius:50%;
+    background:var(--spotify);display:none;
+    align-items:center;justify-content:center;z-index:3;
+  }
+  .record.spotify .sp-badge{display:flex}
+  .sp-badge svg{width:17px;height:17px}
+  /* 針(トーンアーム) */
+  .tonearm{display:none}
+
+  /* --- Spotify: ジャケットからレコードを取り出す演出 --- */
+  .jacket-stage{
+    display:none;
+    width:300px;height:184px;margin:4px auto 14px;
+    position:relative;
+  }
+  .jacket-stage.show{display:block}
+  /* レコード盤(最初はジャケットの真後ろ=中央に収納、タップで右へ) */
+  .js-disc{
+    position:absolute;top:12px;left:64px;
+    width:160px;height:160px;border-radius:50%;
+    box-shadow:0 6px 20px rgba(0,0,0,.5), inset 0 0 0 1px rgba(29,185,84,.35);
+    transform:translateX(0);
+    transition:transform .65s cubic-bezier(.34,1.1,.4,1);
+    z-index:1;
+  }
+  .jacket-stage.out .js-disc{
+    transform:translateX(82px);
+    cursor:pointer;
+  }
+  /* 回転は内側の溝だけにかける(移動transformと競合させない) */
+  .js-disc-inner{
+    position:absolute;inset:0;border-radius:50%;
+    background:
+      repeating-radial-gradient(circle at center,#0a1f12 0 2px,#0f2c1a 2px 4px);
+  }
+  /* 回転が見えるよう、盤面に光の筋を1本入れる */
+  .js-disc-inner::before{
+    content:'';position:absolute;top:6%;left:49%;width:2%;height:44%;
+    background:linear-gradient(rgba(255,255,255,.18),transparent);
+    border-radius:2px;
+  }
+  .jacket-stage.out .js-disc-inner{
+    animation:spin 4s linear infinite;
+  }
+  /* レコード中央のレーベル(ジャケ写) */
+  .js-label{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:54%;height:54%;border-radius:50%;
+    background-size:cover;background-position:center;
+    background-color:#5b4b8a;
+    box-shadow:0 0 0 4px rgba(0,0,0,.35);
+  }
+  .js-label::after{
+    content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:8px;height:8px;border-radius:50%;
+    background:#0a1f12;box-shadow:0 0 0 2px rgba(255,255,255,.15);
+  }
+  /* ジャケット(レコードスリーブ本体・全面プリント) */
+  .js-cover{
+    position:absolute;top:6px;left:64px;
+    width:172px;height:172px;border-radius:2px;
+    overflow:hidden;cursor:pointer;
+    z-index:2;
+    transform:translateX(0);
+    transform-origin:bottom right;
+    transition:transform .65s cubic-bezier(.34,1.1,.4,1);
+    background-color:#5b4b8a;
+    /* 紙の厚み(下の濃い影)+ 接地影 */
+    box-shadow:
+      0 14px 28px rgba(0,0,0,.55),
+      0 2px 0 0 rgba(0,0,0,.45);
+  }
+  .jacket-stage.out .js-cover{
+    transform:translateX(-92px) translateY(-6px) rotate(-7deg);
+  }
+  .js-cover:active{filter:brightness(1.04)}
+  /* ジャケ写(本体全面) */
+  .js-art{
+    position:absolute;inset:0;
+    background-size:cover;background-position:center;
+    background-color:#5b4b8a;
+  }
+  /* 印刷物のマットな陰影:四隅をわずかに落として平面の硬さを消す */
+  .js-cover::after{
+    content:'';position:absolute;inset:0;border-radius:2px;
+    background:
+      radial-gradient(120% 120% at 30% 25%, rgba(255,255,255,.10), transparent 45%),
+      linear-gradient(135deg, transparent 60%, rgba(0,0,0,.22) 100%);
+    pointer-events:none;z-index:3;
+  }
+  /* 右辺の開口(レコードを出す側の紙の重なり) */
+  .js-cover::before{
+    content:'';position:absolute;top:0;bottom:0;right:0;width:6px;
+    background:linear-gradient(270deg,rgba(0,0,0,.45),rgba(255,255,255,.05) 70%,transparent);
+    z-index:4;
+  }
+  /* 左辺の綴じ(背)の折り目 */
+  .js-spine{
+    position:absolute;top:0;bottom:0;left:0;width:5px;
+    background:linear-gradient(90deg,rgba(0,0,0,.5),rgba(255,255,255,.04) 70%,transparent);
+    z-index:4;
+  }
+  .js-hint{
+    position:absolute;left:0;right:0;bottom:0;
+    padding:7px 6px;text-align:center;
+    font-size:11px;font-weight:700;color:#fff;
+    background:rgba(10,8,16,.66);z-index:5;
+  }
+  .jacket-stage.out .js-hint{opacity:0;transition:opacity .2s}
+  .sp-listen{
+    display:none;align-items:center;justify-content:center;gap:8px;
+    width:max-content;max-width:90%;margin:-6px auto 14px;
+    text-decoration:none;
+    background:var(--spotify);color:#0d1a10;
+    font-family:inherit;font-weight:800;font-size:15px;
+    padding:12px 22px;border-radius:999px;
+    box-shadow:0 6px 20px rgba(29,185,84,.45);
+    opacity:0;transform:translateY(8px);
+    transition:opacity .3s .25s, transform .3s .25s;
+  }
+  .sp-listen.show{display:flex}
+  .sp-listen.show.in{opacity:1;transform:translateY(0)}
+  .sp-listen svg{width:20px;height:20px}
+  /* 緑に光る溝 */
+  .record.glow .vinyl{
+    box-shadow:0 8px 26px rgba(0,0,0,.5),
+      inset 0 0 0 1px rgba(29,185,84,.5),
+      0 0 26px rgba(29,185,84,.6);
+    animation:spin 4s linear infinite, glowpulse 1s ease-in-out;
+  }
+  @keyframes glowpulse{
+    0%{filter:brightness(1)}
+    50%{filter:brightness(1.5) saturate(1.4)}
+    100%{filter:brightness(1)}
+  }
 
   .sheet h3{
     font-size:16px;margin-bottom:4px;text-align:center;
@@ -470,12 +618,29 @@
 <div class="sheet-bg" id="sheetBg"></div>
 <div class="sheet" id="sheet">
   <div class="record" id="record" aria-hidden="true">
+    <div class="sleeve" id="sleeve"></div>
     <div class="vinyl">
       <div class="vinyl-art" id="vinylArt"></div>
       <div class="vinyl-hole"></div>
     </div>
+    <div class="sp-badge"><svg viewBox="0 0 24 24" fill="none"><path d="M6 15c3.5-1 7-0.5 10 1.2M5.5 11.5c4.2-1.2 8.5-0.6 12 1.6M5 8c5-1.4 10-0.6 13.5 1.8" stroke="#0d1a10" stroke-width="1.8" stroke-linecap="round"/></svg></div>
     <div class="vinyl-play" id="vinylPlay">▶</div>
   </div>
+
+  <!-- Spotify用: ジャケットからレコードを取り出す演出 -->
+  <div class="jacket-stage" id="jacketStage">
+    <div class="js-disc" id="jsDisc"><div class="js-disc-inner"><div class="js-label" id="jsLabel"></div></div></div>
+    <div class="js-cover" id="jsCover">
+      <div class="js-art" id="jsArt"></div>
+      <div class="js-spine"></div>
+      <div class="js-hint" id="jsHint">タップでレコードを取り出す</div>
+    </div>
+  </div>
+
+  <a class="sp-listen" id="spListen" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#0d1a10"/><path d="M6.5 15c3.5-1 7-0.5 10 1.2M6 11.5c4.2-1.2 8.5-0.6 12 1.6M5.5 8c5-1.4 10-0.6 13.5 1.8" stroke="#1DB954" stroke-width="1.8" stroke-linecap="round"/></svg>
+    Spotifyで聴く
+  </a>
   <h3 id="sheetTitle"></h3>
   <div class="artist" id="sheetArtist"></div>
   <div class="links">
@@ -506,6 +671,13 @@
   const sheetNote = document.getElementById('sheetNote');
   const previewBtn = document.getElementById('previewBtn');
   const vinylArt = document.getElementById('vinylArt');
+  const spListen = document.getElementById('spListen');
+  const jacketStage = document.getElementById('jacketStage');
+  const jsCover = document.getElementById('jsCover');
+  const jsDisc = document.getElementById('jsDisc');
+  const jsArt = document.getElementById('jsArt');
+  const jsLabel = document.getElementById('jsLabel');
+  const jsHint = document.getElementById('jsHint');
   const searchInput = document.getElementById('searchInput');
   const searchBtn = document.getElementById('searchBtn');
   const results = document.getElementById('results');
@@ -680,24 +852,23 @@
     const q = encodeURIComponent(artist ? name + ' ' + artist : name);
 
     if(isSpotify){
-      // Spotifyのリンク → Spotifyボタンだけ
-      spotifyLink.href = url;
-      spotifyLink.style.display = '';
+      // Spotify → ボタンは出さず、レコードタップで誘導(案内文を表示)
+      spotifyLink.style.display = 'none';
       youtubeLink.style.display = 'none';
-      sheetNote.textContent = 'Spotifyで開きます';
+      sheetNote.textContent = 'Spotifyはサイトでの再生に対応していないため、レコードをタップするとアプリに移動します';
     }else if(isYoutube){
       // YouTubeのリンク → YouTubeボタンだけ
       youtubeLink.href = url;
       youtubeLink.style.display = '';
       spotifyLink.style.display = 'none';
-      sheetNote.textContent = 'YouTubeで開きます';
+      sheetNote.textContent = 'レコードをタップすると再生できます';
     }else{
       // リンクなし(検索・手動追加)→ 両方の検索ページに飛べる
       spotifyLink.href = 'https://open.spotify.com/search/' + q;
       youtubeLink.href = 'https://www.youtube.com/results?search_query=' + q;
       spotifyLink.style.display = '';
       youtubeLink.style.display = '';
-      sheetNote.textContent = '曲名+アーティスト名で各サービスを開きます';
+      sheetNote.textContent = 'レコードをタップで再生。各サービスでも開けます';
     }
 
     previewBtn.style.display = preview ? '' : 'none';
@@ -714,11 +885,35 @@
       }
     };
 
-    // レコードをタップ → YouTubeで再生
+    // レコードのモードを決める
     stopRecord();
+    record.classList.remove('spotify','armdown','glow','pulling');
+    jacketStage.classList.remove('show','out');
+    spListen.classList.remove('show','in');
     const ytId = url ? extractYouTubeId(url) : '';
     const searchQuery = artist ? name + ' ' + artist : name;
-    record.onclick = () => toggleRecord(ytId, searchQuery);
+
+    if(isSpotify){
+      // Spotify → ジャケットからレコードを取り出す演出
+      record.style.display = 'none';
+      jacketStage.classList.add('show');
+      jsArt.style.backgroundImage = cardImg ? "url('" + cardImg.src + "')" : 'none';
+      jsLabel.style.backgroundImage = cardImg ? "url('" + cardImg.src + "')" : 'none';
+      jsHint.textContent = 'タップでレコードを取り出す';
+      jsCover.onclick = () => {
+        if(jacketStage.classList.contains('out')) return; // 取り出しは一度だけ
+        jacketStage.classList.add('out');
+        sheetNote.textContent = 'レコードをタップするとSpotifyが開きます';
+      };
+      jsDisc.onclick = () => {
+        if(!jacketStage.classList.contains('out')) return; // 取り出した後だけ反応
+        window.open(url, '_blank', 'noopener');
+      };
+    }else{
+      // YouTube/検索カード → タップでその場再生
+      record.style.display = '';
+      record.onclick = () => toggleRecord(ytId, searchQuery);
+    }
 
     sheet.classList.add('open');
     sheetBg.classList.add('open');
@@ -767,7 +962,11 @@
 
   function stopRecord(){
     if(ytPlayer && ytReady){ try{ ytPlayer.stopVideo(); }catch(e){} }
-    record.classList.remove('playing','loading');
+    record.classList.remove('playing','loading','armdown','glow','pulling');
+    if(typeof jacketStage !== 'undefined' && jacketStage){
+      jacketStage.classList.remove('show','out');
+    }
+    spListen.classList.remove('show','in');
     recordPlaying = false;
   }
 
