@@ -532,9 +532,8 @@
     font-family:inherit;
   }
   .open-spotify{background:var(--spotify);color:#0d1a10!important}
+  .open-apple{background:linear-gradient(135deg,#fa2d48,#fb5c74)}
   .open-youtube{background:var(--youtube)}
-  .preview-btn{background:var(--panel2);border:1px solid var(--line)!important}
-  .preview-btn.playing{background:var(--accent);color:#1c1626}
   .sheet .note{font-size:11px;color:var(--sub);text-align:center;margin-top:10px}
 </style>
 </head>
@@ -627,26 +626,12 @@
     <div class="vinyl-play" id="vinylPlay">▶</div>
   </div>
 
-  <!-- Spotify用: ジャケットからレコードを取り出す演出 -->
-  <div class="jacket-stage" id="jacketStage">
-    <div class="js-disc" id="jsDisc"><div class="js-disc-inner"><div class="js-label" id="jsLabel"></div></div></div>
-    <div class="js-cover" id="jsCover">
-      <div class="js-art" id="jsArt"></div>
-      <div class="js-spine"></div>
-      <div class="js-hint" id="jsHint">タップでレコードを取り出す</div>
-    </div>
-  </div>
-
-  <a class="sp-listen" id="spListen" target="_blank" rel="noopener">
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#0d1a10"/><path d="M6.5 15c3.5-1 7-0.5 10 1.2M6 11.5c4.2-1.2 8.5-0.6 12 1.6M5.5 8c5-1.4 10-0.6 13.5 1.8" stroke="#1DB954" stroke-width="1.8" stroke-linecap="round"/></svg>
-    Spotifyで聴く
-  </a>
   <h3 id="sheetTitle"></h3>
   <div class="artist" id="sheetArtist"></div>
   <div class="links">
-    <button class="preview-btn" id="previewBtn">▶ 試聴</button>
-    <a class="open-spotify" id="spotifyLink" target="_blank" rel="noopener">Spotify</a>
-    <a class="open-youtube" id="youtubeLink" target="_blank" rel="noopener">YouTube</a>
+    <a class="open-spotify" id="spotifyLink" target="_blank" rel="noopener">Spotifyで開く</a>
+    <a class="open-apple" id="appleLink" target="_blank" rel="noopener">Apple Musicで開く</a>
+    <a class="open-youtube" id="youtubeLink" target="_blank" rel="noopener">YouTubeで開く</a>
   </div>
   <p class="note" id="sheetNote"></p>
 </div>
@@ -667,17 +652,10 @@
   const sheetTitle = document.getElementById('sheetTitle');
   const sheetArtist = document.getElementById('sheetArtist');
   const spotifyLink = document.getElementById('spotifyLink');
+  const appleLink = document.getElementById('appleLink');
   const youtubeLink = document.getElementById('youtubeLink');
   const sheetNote = document.getElementById('sheetNote');
-  const previewBtn = document.getElementById('previewBtn');
   const vinylArt = document.getElementById('vinylArt');
-  const spListen = document.getElementById('spListen');
-  const jacketStage = document.getElementById('jacketStage');
-  const jsCover = document.getElementById('jsCover');
-  const jsDisc = document.getElementById('jsDisc');
-  const jsArt = document.getElementById('jsArt');
-  const jsLabel = document.getElementById('jsLabel');
-  const jsHint = document.getElementById('jsHint');
   const searchInput = document.getElementById('searchInput');
   const searchBtn = document.getElementById('searchBtn');
   const results = document.getElementById('results');
@@ -687,8 +665,6 @@
   let selected = null;
   let idSeq = 0;
   let playMode = false;
-  const audio = new Audio();
-  audio.addEventListener('ended', () => previewBtn.classList.remove('playing'));
 
   const tierColors = ['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#b197fc','#f783ac'];
   const defaultTiers = ['S','A','B','C','D'];
@@ -852,77 +828,38 @@
     const isApple = /(music\.apple\.com|itunes\.apple\.com)/.test(url);
     const q = encodeURIComponent(artist ? name + ' ' + artist : name);
 
+    // 下のボタン: 出どころに応じて公式リンクを1つ出す
     if(isSpotify){
-      // Spotify → ボタンは出さず、レコードタップで誘導(案内文を表示)
-      spotifyLink.style.display = 'none';
+      spotifyLink.href = url;
+      spotifyLink.style.display = '';
       youtubeLink.style.display = 'none';
-      sheetNote.textContent = 'Spotifyはサイトでの再生に対応していないため、レコードをタップするとアプリに移動します';
     }else if(isApple){
-      // Apple Music/iTunes → ボタンは出さず、レコードタップで誘導
+      // Apple Musicボタンとして緑のボタンを流用(ラベルだけ差し替え)
+      appleLink.href = url;
+      appleLink.style.display = '';
       spotifyLink.style.display = 'none';
       youtubeLink.style.display = 'none';
-      sheetNote.textContent = 'Apple Musicはサイトでの再生に対応していないため、レコードをタップするとアプリに移動します';
     }else if(isYoutube){
-      // YouTubeのリンク → YouTubeボタンだけ
       youtubeLink.href = url;
       youtubeLink.style.display = '';
       spotifyLink.style.display = 'none';
-      sheetNote.textContent = 'レコードをタップすると再生できます';
     }else{
-      // リンクなし(検索・手動追加)→ 両方の検索ページに飛べる
+      // リンクなし(手動追加)→ 検索ページへ
       spotifyLink.href = 'https://open.spotify.com/search/' + q;
       youtubeLink.href = 'https://www.youtube.com/results?search_query=' + q;
       spotifyLink.style.display = '';
       youtubeLink.style.display = '';
-      sheetNote.textContent = 'レコードをタップで再生。各サービスでも開けます';
     }
+    if(!isApple) appleLink.style.display = 'none';
+    sheetNote.textContent = 'レコードをタップで再生。下のボタンで公式でも聴けます';
 
-    previewBtn.style.display = preview ? '' : 'none';
-    previewBtn.classList.remove('playing');
-    audio.pause();
-    previewBtn.onclick = () => {
-      if(!audio.paused){
-        audio.pause();
-        previewBtn.classList.remove('playing');
-      }else{
-        audio.src = preview;
-        audio.play();
-        previewBtn.classList.add('playing');
-      }
-    };
-
-    // レコードのモードを決める
+    // レコードのモードを決める(全カード共通: タップでYouTube再生)
     stopRecord();
     record.classList.remove('spotify','armdown','glow','pulling');
-    jacketStage.classList.remove('show','out');
-    spListen.classList.remove('show','in');
+    record.style.display = '';
     const ytId = url ? extractYouTubeId(url) : '';
     const searchQuery = artist ? name + ' ' + artist : name;
-
-    // ジャケット演出(サイト内再生しない=各サービスへ誘導)するカードか
-    const sheetService = isSpotify ? 'Spotify' : (isApple ? 'Apple Music' : '');
-
-    if(isSpotify || isApple){
-      // Spotify / Apple Music → ジャケットからレコードを取り出す演出
-      record.style.display = 'none';
-      jacketStage.classList.add('show');
-      jsArt.style.backgroundImage = cardImg ? "url('" + cardImg.src + "')" : 'none';
-      jsLabel.style.backgroundImage = cardImg ? "url('" + cardImg.src + "')" : 'none';
-      jsHint.textContent = 'タップでレコードを取り出す';
-      jsCover.onclick = () => {
-        if(jacketStage.classList.contains('out')) return; // 取り出しは一度だけ
-        jacketStage.classList.add('out');
-        sheetNote.textContent = 'レコードをタップすると' + sheetService + 'が開きます';
-      };
-      jsDisc.onclick = () => {
-        if(!jacketStage.classList.contains('out')) return; // 取り出した後だけ反応
-        window.open(url, '_blank', 'noopener');
-      };
-    }else{
-      // YouTube/検索カード → タップでその場再生
-      record.style.display = '';
-      record.onclick = () => toggleRecord(ytId, searchQuery);
-    }
+    record.onclick = () => toggleRecord(ytId, searchQuery);
 
     sheet.classList.add('open');
     sheetBg.classList.add('open');
@@ -930,8 +867,6 @@
   function closeSheet(){
     sheet.classList.remove('open');
     sheetBg.classList.remove('open');
-    audio.pause();
-    previewBtn.classList.remove('playing');
     stopRecord();
   }
   sheetBg.onclick = closeSheet;
@@ -971,11 +906,7 @@
 
   function stopRecord(){
     if(ytPlayer && ytReady){ try{ ytPlayer.stopVideo(); }catch(e){} }
-    record.classList.remove('playing','loading','armdown','glow','pulling');
-    if(typeof jacketStage !== 'undefined' && jacketStage){
-      jacketStage.classList.remove('show','out');
-    }
-    spListen.classList.remove('show','in');
+    record.classList.remove('playing','loading');
     recordPlaying = false;
   }
 
