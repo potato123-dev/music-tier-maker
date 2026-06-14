@@ -541,17 +541,19 @@
   .vol.show{display:flex}
   .vol-ic{font-size:14px;opacity:.75;flex:none}
   .vol-track{
-    position:relative;flex:1;height:26px;display:flex;align-items:center;
+    position:relative;flex:1;height:30px;display:flex;align-items:center;
   }
-  /* 目盛り(0〜10の刻み) */
+  /* 目盛り(0〜10の刻み)。レールを上下に貫通、ツマミより後ろ */
   .vol-track::before{
-    content:'';position:absolute;left:0;right:0;top:3px;height:7px;
-    background-image:repeating-linear-gradient(90deg,
-      rgba(255,255,255,.28) 0 1px, transparent 1px 10%);
+    content:'';position:absolute;left:9px;right:9px;top:4px;bottom:4px;z-index:0;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(255,255,255,.35) 0 1px, transparent 1px 10%),
+      linear-gradient(90deg, transparent calc(100% - 1px), rgba(255,255,255,.35) calc(100% - 1px));
     pointer-events:none;
   }
   #volSlider{
     -webkit-appearance:none;appearance:none;
+    position:relative;z-index:1;
     width:100%;height:5px;border-radius:2px;
     background:linear-gradient(90deg,var(--accent) 0%,var(--accent) 80%,#000 80%,#000 100%);
     outline:none;cursor:pointer;
