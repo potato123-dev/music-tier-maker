@@ -561,24 +561,26 @@
   #volSlider::-webkit-slider-thumb{
     -webkit-appearance:none;appearance:none;
     width:20px;height:28px;border-radius:3px;
-    background:linear-gradient(180deg,#3a3a40,#1a1a1e);
     border:1px solid #000;
     box-shadow:0 2px 5px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.15);
     cursor:pointer;
-    /* 中央の白い指かけライン */
-    background-image:
-      linear-gradient(180deg,#3a3a40,#1a1a1e),
-      linear-gradient(#e8e8ec,#e8e8ec);
-    background-size:100% 100%, 100% 2px;
-    background-position:center, center;
-    background-repeat:no-repeat;
+    /* 上半分→下半分の黒グラデの中央に白ライン */
+    background:
+      linear-gradient(180deg,
+        #3a3a40 0%, #2a2a30 46%,
+        #e8e8ec 46%, #e8e8ec 54%,
+        #222227 54%, #15151a 100%);
   }
   #volSlider::-moz-range-thumb{
     width:20px;height:28px;border-radius:3px;
-    background:linear-gradient(180deg,#3a3a40,#1a1a1e);
     border:1px solid #000;
     box-shadow:0 2px 5px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.15);
     cursor:pointer;
+    background:
+      linear-gradient(180deg,
+        #3a3a40 0%, #2a2a30 46%,
+        #e8e8ec 46%, #e8e8ec 54%,
+        #222227 54%, #15151a 100%);
   }
   .open-youtube{background:var(--youtube)}
   .sheet .note{font-size:11px;color:var(--sub);text-align:center;margin-top:10px}
