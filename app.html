@@ -750,7 +750,7 @@
           name: t.trackName,
           artist: t.artistName,
           image: (t.artworkUrl100 || '').replace('100x100','300x300'),
-          url: '',
+          url: t.trackViewUrl || t.collectionViewUrl || '',
           preview: t.previewUrl || ''
         })));
       }
@@ -849,6 +849,7 @@
 
     const isSpotify = /open\.spotify\.com/.test(url);
     const isYoutube = /(youtube\.com|youtu\.be)/.test(url);
+    const isApple = /(music\.apple\.com|itunes\.apple\.com)/.test(url);
     const q = encodeURIComponent(artist ? name + ' ' + artist : name);
 
     if(isSpotify){
@@ -856,6 +857,11 @@
       spotifyLink.style.display = 'none';
       youtubeLink.style.display = 'none';
       sheetNote.textContent = 'Spotifyはサイトでの再生に対応していないため、レコードをタップするとアプリに移動します';
+    }else if(isApple){
+      // Apple Music/iTunes → ボタンは出さず、レコードタップで誘導
+      spotifyLink.style.display = 'none';
+      youtubeLink.style.display = 'none';
+      sheetNote.textContent = 'Apple Musicはサイトでの再生に対応していないため、レコードをタップするとアプリに移動します';
     }else if(isYoutube){
       // YouTubeのリンク → YouTubeボタンだけ
       youtubeLink.href = url;
@@ -893,8 +899,11 @@
     const ytId = url ? extractYouTubeId(url) : '';
     const searchQuery = artist ? name + ' ' + artist : name;
 
-    if(isSpotify){
-      // Spotify → ジャケットからレコードを取り出す演出
+    // ジャケット演出(サイト内再生しない=各サービスへ誘導)するカードか
+    const sheetService = isSpotify ? 'Spotify' : (isApple ? 'Apple Music' : '');
+
+    if(isSpotify || isApple){
+      // Spotify / Apple Music → ジャケットからレコードを取り出す演出
       record.style.display = 'none';
       jacketStage.classList.add('show');
       jsArt.style.backgroundImage = cardImg ? "url('" + cardImg.src + "')" : 'none';
@@ -903,7 +912,7 @@
       jsCover.onclick = () => {
         if(jacketStage.classList.contains('out')) return; // 取り出しは一度だけ
         jacketStage.classList.add('out');
-        sheetNote.textContent = 'レコードをタップするとSpotifyが開きます';
+        sheetNote.textContent = 'レコードをタップすると' + sheetService + 'が開きます';
       };
       jsDisc.onclick = () => {
         if(!jacketStage.classList.contains('out')) return; // 取り出した後だけ反応
