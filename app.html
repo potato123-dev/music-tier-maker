@@ -759,13 +759,29 @@
     if(!/^https?:\/\//.test(url)) url = 'https://' + url;
     linkStatus.textContent = '取得中…';
     try{
-      let name = '', img = '';
+      let name = '', img = '', artist = '';
 
       if(/open\.spotify\.com/.test(url)){
-        // Spotify oEmbed: 鍵なしでジャケ写とタイトルが取れる
-        const d = await fetchJson('https://open.spotify.com/oembed?url=' + encodeURIComponent(url));
-        name = d.title || 'Spotify';
-        img = d.thumbnail_url || '';
+        // まずWorker経由でSpotify APIから正確な曲名+アーティストを取る
+        let got = false;
+        if(SHARE_API){
+          try{
+            const base = SHARE_API.replace(/\/$/,'');
+            const d = await fetchJson(base + '/api/spotify?url=' + encodeURIComponent(url));
+            if(d && d.name && !d.error){
+              name = d.name;
+              artist = d.artist || '';
+              img = d.image || '';
+              got = true;
+            }
+          }catch(e){}
+        }
+        // 取れなければ従来のoEmbed(曲名だけ)にフォールバック
+        if(!got){
+          const d = await fetchJson('https://open.spotify.com/oembed?url=' + encodeURIComponent(url));
+          name = d.title || 'Spotify';
+          img = d.thumbnail_url || '';
+        }
 
       }else if(/(youtube\.com|youtu\.be)/.test(url)){
         // YouTube: サムネURLは動画IDから組み立てられる
@@ -800,7 +816,7 @@
         return;
       }
 
-      pool.appendChild(makeItem(name, img, url, '', ''));
+      pool.appendChild(makeItem(name, img, url, artist, ''));
       linkInput.value = '';
       linkStatus.textContent = '';
     }catch(err){
@@ -1282,12 +1298,26 @@
         const id = d.slice(3);
         const url = 'https://open.spotify.com/' + type + '/' + id;
         const el = makeItem('…', '', url, '', '');
-        fetchJson('https://open.spotify.com/oembed?url=' + encodeURIComponent(url))
-          .then(r => {
+        // Worker経由で正確な曲名+アーティストを取得(取れなければoEmbed)
+        (async () => {
+          if(type === 'track' && SHARE_API){
+            try{
+              const base = SHARE_API.replace(/\/$/,'');
+              const r = await fetchJson(base + '/api/spotify?url=' + encodeURIComponent(url));
+              if(r && r.name && !r.error){
+                setItemImage(el, r.image || '');
+                setItemName(el, r.name);
+                if(r.artist) el.dataset.artist = r.artist;
+                return;
+              }
+            }catch(e){}
+          }
+          try{
+            const r = await fetchJson('https://open.spotify.com/oembed?url=' + encodeURIComponent(url));
             setItemImage(el, r.thumbnail_url || '');
             if(r.title) setItemName(el, r.title);
-          })
-          .catch(() => setItemName(el, 'Spotify'));
+          }catch(e){ setItemName(el, 'Spotify'); }
+        })();
         return el;
       }
     }
