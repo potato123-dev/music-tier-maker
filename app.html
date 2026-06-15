@@ -1720,12 +1720,25 @@
         });
       }
 
-      // ロゴ+URLを上部に
+      // ロゴ(ネオン管風SVG)+URLを上部に
       const head = document.createElement('div');
-      head.style.cssText = 'display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:6px 4px 10px;';
-      const logo = document.createElement('span');
-      logo.textContent = 'MUSIC TIER';
-      logo.style.cssText = "font-family:'Monoton',cursive;font-size:26px;color:#ff5c8a;letter-spacing:2px;";
+      head.style.cssText = 'display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:4px 4px 12px;';
+      const logo = document.createElement('div');
+      logo.style.cssText = 'flex:none;line-height:0;';
+      logo.innerHTML =
+        '<svg width="300" height="46" viewBox="0 0 300 46" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><filter id="ng" x="-30%" y="-30%" width="160%" height="160%">' +
+        '<feGaussianBlur stdDeviation="2.2" result="b"/>' +
+        '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>' +
+        '</filter></defs>' +
+        '<text x="2" y="34" filter="url(#ng)" ' +
+        'font-family="Monoton, cursive" font-size="34" letter-spacing="2" ' +
+        'fill="none" stroke="#ff5c8a" stroke-width="1.1" ' +
+        'style="paint-order:stroke">MUSIC TIER</text>' +
+        '<text x="2" y="34" ' +
+        'font-family="Monoton, cursive" font-size="34" letter-spacing="2" ' +
+        'fill="#ff7aa3">MUSIC TIER</text>' +
+        '</svg>';
       const link = document.createElement('span');
       link.textContent = location.origin + location.pathname;
       link.style.cssText = "font-size:13px;color:#a99cc4;font-weight:700;";
