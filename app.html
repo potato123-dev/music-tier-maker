@@ -12,7 +12,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Monoton&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/modern-screenshot@4/dist/index.js"></script>
 <style>
   :root{
     --bg:#16121f;
@@ -1691,57 +1691,64 @@
       const vinylMap = isRecord ? await buildVinylDataUrls() : null;
       const artMap = isRecord ? null : await buildArtDataUrls();
 
-      const canvas = await html2canvas(board, {
-        backgroundColor: '#16121f',
-        useCORS: true,
+      // boardを複製して画面外で加工(元の表示は触らない)
+      const clone = board.cloneNode(true);
+      clone.querySelectorAll('.tier-tools').forEach(e => e.style.display = 'none');
+      clone.querySelectorAll('.item.selected').forEach(e => e.classList.remove('selected'));
+
+      if(isRecord){
+        clone.querySelectorAll('.item').forEach(item => {
+          const imgEl = item.querySelector('img');
+          const src = imgEl ? imgEl.src : '';
+          const url = (vinylMap && vinylMap[src]) || '';
+          item.querySelectorAll('img').forEach(e => e.remove());
+          item.style.background = url ? "center/contain no-repeat url('" + url + "')" : 'transparent';
+          item.style.boxShadow = 'none';
+          item.style.borderRadius = '0';
+          item.style.overflow = 'visible';
+        });
+      }else{
+        clone.querySelectorAll('.item img').forEach(img => {
+          const url = (artMap && artMap[img.src]) || img.src;
+          const d = document.createElement('div');
+          d.style.width = '100%';
+          d.style.height = '100%';
+          d.style.backgroundImage = "url('" + url + "')";
+          d.style.backgroundSize = 'cover';
+          d.style.backgroundPosition = 'center';
+          img.replaceWith(d);
+        });
+      }
+
+      // ロゴ+URLを上部に
+      const head = document.createElement('div');
+      head.style.cssText = 'display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:6px 4px 10px;';
+      const logo = document.createElement('span');
+      logo.textContent = 'MUSIC TIER';
+      logo.style.cssText = "font-family:'Monoton',cursive;font-size:26px;color:#ff5c8a;letter-spacing:2px;";
+      const link = document.createElement('span');
+      link.textContent = location.origin + location.pathname;
+      link.style.cssText = "font-size:13px;color:#a99cc4;font-weight:700;";
+      head.appendChild(logo); head.appendChild(link);
+      clone.insertBefore(head, clone.firstChild);
+
+      // 画面外に配置(幅は元のboardに合わせる)
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;left:-99999px;top:0;background:#16121f;padding:10px;width:' + board.offsetWidth + 'px;';
+      wrap.appendChild(clone);
+      document.body.appendChild(wrap);
+
+      // modern-screenshotで高画質撮影(scale=3相当)
+      const dataUrl = await modernScreenshot.domToPng(wrap, {
         scale: 3,
-        onclone: (doc) => {
-          doc.querySelectorAll('.tier-tools').forEach(e => e.style.display = 'none');
-          doc.querySelectorAll('.item.selected').forEach(e => e.classList.remove('selected'));
-
-          if(isRecord){
-            // レコード: 事前に描いたレコード画像を背景に敷く
-            doc.querySelectorAll('.item').forEach(item => {
-              const imgEl = item.querySelector('img');
-              const src = imgEl ? imgEl.src : '';
-              const url = (vinylMap && vinylMap[src]) || '';
-              item.querySelectorAll('img').forEach(e => e.remove());
-              item.style.background = url ? "center/contain no-repeat url('" + url + "')" : 'transparent';
-              item.style.boxShadow = 'none';
-              item.style.borderRadius = '0';
-              item.style.overflow = 'visible';
-            });
-          }else{
-            // 正方形・ジャケット: 高解像度ジャケ写を背景に
-            doc.querySelectorAll('.item img').forEach(img => {
-              const url = (artMap && artMap[img.src]) || img.src;
-              const d = doc.createElement('div');
-              d.style.width = '100%';
-              d.style.height = '100%';
-              d.style.backgroundImage = "url('" + url + "')";
-              d.style.backgroundSize = 'cover';
-              d.style.backgroundPosition = 'center';
-              img.replaceWith(d);
-            });
-          }
-
-          const clonedBoard = doc.getElementById('board');
-          const head = doc.createElement('div');
-          head.style.cssText = 'display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:6px 4px 10px;';
-          const logo = doc.createElement('span');
-          logo.textContent = 'MUSIC TIER';
-          logo.style.cssText = "font-family:'Monoton',cursive;font-size:26px;color:#ff5c8a;letter-spacing:2px;";
-          const link = doc.createElement('span');
-          link.textContent = location.origin + location.pathname;
-          link.style.cssText = "font-size:13px;color:#a99cc4;font-weight:700;";
-          head.appendChild(logo);
-          head.appendChild(link);
-          clonedBoard.insertBefore(head, clonedBoard.firstChild);
-        }
+        backgroundColor: '#16121f',
       });
+
+      document.body.removeChild(wrap);
+
       const a = document.createElement('a');
       a.download = 'music-tier.png';
-      a.href = canvas.toDataURL('image/png');
+      a.href = dataUrl;
       a.click();
       shareStatus.textContent = '✓ 画像を保存した!';
     }catch(e){
