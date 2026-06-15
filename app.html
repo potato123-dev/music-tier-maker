@@ -123,25 +123,6 @@
     background:var(--accent);color:#1c1626;border-color:var(--accent);
   }
   /* 横長モード: 16:9のカード */
-  body.imode-wide .item{
-    width:calc(var(--card)*1.55);
-    height:calc(var(--card)*0.872);
-  }
-  body.imode-wide .tier-label,
-  body.imode-wide .tier-items{
-    min-height:calc(var(--card)*0.872 + 18px);
-  }
-  body.imode-wide .pool{
-    min-height:calc(var(--card)*0.872 + 20px);
-  }
-  /* 自動モード: 画像の縦横比に合わせる */
-  body.imode-auto .item{
-    height:auto;aspect-ratio:1/1;
-  }
-  body.imode-auto .item.is-wide{
-    width:calc(var(--card)*1.5);
-  }
-
   .board{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
   .tier{
     display:flex;border-radius:12px;overflow:hidden;
@@ -173,6 +154,7 @@
   .tier-tools button:hover{color:var(--text)}
   body.playmode .tier-tools{display:none}
 
+  /* === カード基本(正方形モード) === */
   .item{
     width:var(--card);height:var(--card);border-radius:10px;
     position:relative;cursor:grab;user-select:none;
@@ -198,22 +180,66 @@
     pointer-events:none;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
+
+  /* === ジャケットモード(紙の質感つき) === */
+  body.imode-jacket .item{
+    border-radius:3px;
+    background:#0d0a14;
+    box-shadow:0 6px 16px rgba(0,0,0,.5);
+  }
+  body.imode-jacket .item img{
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.4);
+  }
+  /* 斜めの光沢 */
+  body.imode-jacket .item::after{
+    content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:linear-gradient(115deg,rgba(255,255,255,.14) 0%,transparent 22%,transparent 80%,rgba(255,255,255,.06) 100%);
+  }
+  /* 左の背表紙 */
+  body.imode-jacket .item .name{border-radius:0}
+
+  /* === レコードモード(円盤+中央レーベル) === */
+  body.imode-record .item{
+    border-radius:50%;overflow:visible;
+    background:repeating-radial-gradient(circle at center,#15121c 0 2px,#1d1928 2px 4px);
+    box-shadow:0 3px 10px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+  body.imode-record .item::after{
+    content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+    background:linear-gradient(135deg,rgba(255,255,255,.10) 0%,transparent 40%,transparent 60%,rgba(255,255,255,.05) 100%);
+  }
+  body.imode-record .item::before{
+    content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:7px;height:7px;border-radius:50%;z-index:2;
+    background:#0a0810;box-shadow:0 0 0 2px rgba(255,255,255,.12);
+  }
+  body.imode-record .item img{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:62%;height:62%;border-radius:50%;
+    box-shadow:0 0 0 3px rgba(0,0,0,.4), 0 0 0 4px rgba(255,255,255,.06);
+  }
+  body.imode-record .item .name{
+    left:50%;right:auto;transform:translateX(-50%);bottom:-2px;
+    max-width:118%;border-radius:8px;padding:2px 7px;font-size:11px;
+    background:rgba(10,8,16,.82);z-index:3;
+  }
+  body.imode-record .item.selected{box-shadow:0 0 14px rgba(255,92,138,.5)}
   .item .del{
-    position:absolute;top:1px;right:1px;
+    position:absolute;top:0;right:0;z-index:4;
     width:18px;height:18px;border-radius:50%;
-    border:none;background:rgba(10,8,16,.7);color:#fff;
+    border:none;background:rgba(10,8,16,.8);color:#fff;
     font-size:11px;line-height:1;cursor:pointer;display:none;
   }
   .item.selected .del{display:block}
   body.playmode .item .del{display:none}
   .item .mv{
-    position:absolute;top:50%;transform:translateY(-50%);
+    position:absolute;top:50%;transform:translateY(-50%);z-index:4;
     width:18px;height:24px;border:none;border-radius:6px;
-    background:rgba(10,8,16,.75);color:#fff;
+    background:rgba(10,8,16,.8);color:#fff;
     font-size:11px;line-height:1;padding:0;cursor:pointer;display:none;
   }
-  .item .mv.l{left:1px}
-  .item .mv.r{right:1px}
+  .item .mv.l{left:-2px}
+  .item .mv.r{right:-2px}
   .item.selected .mv{display:block}
   body.playmode .item .mv{display:none}
   .item.dragging{opacity:.3}
@@ -607,8 +633,8 @@
 <div class="imode-row">
   <span>アイコンの形:</span>
   <button class="im-btn" data-m="square">◼ 正方形</button>
-  <button class="im-btn" data-m="wide">▭ 横長</button>
-  <button class="im-btn" data-m="auto">画像に合わせる</button>
+  <button class="im-btn" data-m="jacket">💿 ジャケット</button>
+  <button class="im-btn" data-m="record">⬤ レコード</button>
 </div>
 
 <div class="shared-banner" id="sharedBanner">
@@ -1240,9 +1266,9 @@
   // ---- アイコン形状モード ----
   let imode = 'square';
   function setImode(m){
-    if(!['square','wide','auto'].includes(m)) m = 'square';
+    if(!['square','jacket','record'].includes(m)) m = 'square';
     imode = m;
-    document.body.classList.remove('imode-square','imode-wide','imode-auto');
+    document.body.classList.remove('imode-square','imode-jacket','imode-record');
     document.body.classList.add('imode-' + m);
     document.querySelectorAll('.im-btn').forEach(b => b.classList.toggle('active', b.dataset.m === m));
     try{ localStorage.setItem(IMODE_KEY, m); }catch(e){}
@@ -1541,30 +1567,164 @@
   };
 
   // ティア表を画像でダウンロード
+  // レコード盤をCanvasに描く(画像保存用)
+  function drawVinylTo(ctx, size, jacketImg){
+    const cx = size/2, cy = size/2, R = size/2;
+    // 盤の影は省略(背景透過)。黒い円盤
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.closePath(); ctx.clip();
+    // ベース
+    ctx.fillStyle = '#191522';
+    ctx.fillRect(0,0,size,size);
+    // 溝(同心円)
+    ctx.lineWidth = Math.max(1, size/110);
+    for(let r = R-2; r > R*0.34; r -= size/55){
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI*2);
+      ctx.strokeStyle = (Math.round(r) % 2 === 0) ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.45)';
+      ctx.stroke();
+    }
+    // 光沢(斜めグラデ)
+    const g = ctx.createLinearGradient(0,0,size,size);
+    g.addColorStop(0,'rgba(255,255,255,0.10)');
+    g.addColorStop(0.4,'rgba(255,255,255,0)');
+    g.addColorStop(0.6,'rgba(255,255,255,0)');
+    g.addColorStop(1,'rgba(255,255,255,0.05)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,size,size);
+    ctx.restore();
+    // 中央レーベル(ジャケ写を円形クリップ)
+    const lr = R*0.62;
+    if(jacketImg){
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, lr, 0, Math.PI*2); ctx.closePath(); ctx.clip();
+      // coverになるよう短辺フィット
+      const iw = jacketImg.naturalWidth || jacketImg.width;
+      const ih = jacketImg.naturalHeight || jacketImg.height;
+      const scale = Math.max((lr*2)/iw, (lr*2)/ih);
+      const dw = iw*scale, dh = ih*scale;
+      ctx.drawImage(jacketImg, cx-dw/2, cy-dh/2, dw, dh);
+      ctx.restore();
+      // レーベルの縁
+      ctx.beginPath(); ctx.arc(cx, cy, lr, 0, Math.PI*2);
+      ctx.lineWidth = Math.max(2, size/55);
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.stroke();
+    }
+    // 中心の穴
+    ctx.beginPath(); ctx.arc(cx, cy, Math.max(2,size/30), 0, Math.PI*2);
+    ctx.fillStyle = '#0a0810'; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.stroke();
+  }
+
+  // ジャケ写URLを高解像度版に変換(画像保存用)
+  function hiResArt(src){
+    if(!src) return src;
+    // iTunes(mzstatic): 100x100/300x300 → 600x600
+    if(/mzstatic\.com/.test(src)){
+      return src.replace(/\/(\d+)x\1(bb)?\.(jpg|png)/i, '/600x600$2.$3');
+    }
+    // Spotify: 中サイズ(ab67616d0000b273)→大サイズ(ab67616d000082c1相当)はAPIで取得済みなのでそのまま
+    // YouTube: mq/hq/sd/hq720 → maxresdefault
+    if(/img\.youtube\.com/.test(src)){
+      return src.replace(/\/(mqdefault|hqdefault|sddefault|hq720)\.jpg/, '/maxresdefault.jpg');
+    }
+    return src;
+  }
+
+  // 画像を読み込む。高解像度版を優先し、無ければ元にフォールバック
+  function loadImg(src){
+    return new Promise((resolve) => {
+      if(!src){ resolve(null); return; }
+      const hi = hiResArt(src);
+      const attempt = (u, fb) => {
+        const im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = () => {
+          // YouTubeのmaxresが無い場合120pxのダミーが返る→小さければ却下
+          if((im.naturalWidth || 0) < 200 && fb){ attempt(fb, null); return; }
+          resolve(im);
+        };
+        im.onerror = () => { fb ? attempt(fb, null) : resolve(null); };
+        im.src = u;
+      };
+      attempt(hi, hi !== src ? src : null);
+    });
+  }
+
+  // 各カードのレコードを描いてdataURL化(srcをキーに)
+  async function buildVinylDataUrls(){
+    const map = {};
+    const srcs = [...new Set([...document.querySelectorAll('.item img')].map(i => i.src))];
+    for(const src of srcs){
+      const jacket = await loadImg(src);
+      const c = document.createElement('canvas');
+      c.width = 660; c.height = 660;   // 高解像度(scale:3に合わせる)
+      drawVinylTo(c.getContext('2d'), 660, jacket);
+      try{ map[src] = c.toDataURL('image/png'); }catch(e){ map[src] = ''; }
+    }
+    return map;
+  }
+
+  // 各カードの高解像度ジャケ写をdataURL化(正方形・ジャケットモード用)
+  async function buildArtDataUrls(){
+    const map = {};
+    const srcs = [...new Set([...document.querySelectorAll('.item img')].map(i => i.src))];
+    for(const src of srcs){
+      const img = await loadImg(src);
+      if(!img){ map[src] = src; continue; }
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      try{
+        c.getContext('2d').drawImage(img, 0, 0);
+        map[src] = c.toDataURL('image/png');
+      }catch(e){ map[src] = src; }
+    }
+    return map;
+  }
+
   const imgSaveBtn = document.getElementById('imgSaveBtn');
   imgSaveBtn.onclick = async () => {
     shareStatus.textContent = '画像を作成中…(ちょっと待ってね)';
     try{
+      const isRecord = document.body.classList.contains('imode-record');
+      // 高解像度の素材を先に用意
+      const vinylMap = isRecord ? await buildVinylDataUrls() : null;
+      const artMap = isRecord ? null : await buildArtDataUrls();
+
       const canvas = await html2canvas(board, {
         backgroundColor: '#16121f',
-        useCORS: true,   // ジャケ写・サムネも画像に含める
-        scale: 3,        // 高解像度で出力
+        useCORS: true,
+        scale: 3,
         onclone: (doc) => {
-          // 画像には編集用のボタン類と選択枠を入れない
           doc.querySelectorAll('.tier-tools').forEach(e => e.style.display = 'none');
           doc.querySelectorAll('.item.selected').forEach(e => e.classList.remove('selected'));
-          // 引き延ばし対策: imgタグを背景画像方式に差し替える
-          // (画像化ライブラリがobject-fit:coverを再現できないため)
-          doc.querySelectorAll('.item img').forEach(img => {
-            const d = doc.createElement('div');
-            d.style.width = '100%';
-            d.style.height = '100%';
-            d.style.backgroundImage = "url('" + img.src + "')";
-            d.style.backgroundSize = 'cover';
-            d.style.backgroundPosition = 'center';
-            img.replaceWith(d);
-          });
-          // ロゴとサイトURLを画像の上部に入れる(宣伝用)
+
+          if(isRecord){
+            // レコード: 事前に描いたレコード画像を背景に敷く
+            doc.querySelectorAll('.item').forEach(item => {
+              const imgEl = item.querySelector('img');
+              const src = imgEl ? imgEl.src : '';
+              const url = (vinylMap && vinylMap[src]) || '';
+              item.querySelectorAll('img').forEach(e => e.remove());
+              item.style.background = url ? "center/contain no-repeat url('" + url + "')" : 'transparent';
+              item.style.boxShadow = 'none';
+              item.style.borderRadius = '0';
+              item.style.overflow = 'visible';
+            });
+          }else{
+            // 正方形・ジャケット: 高解像度ジャケ写を背景に
+            doc.querySelectorAll('.item img').forEach(img => {
+              const url = (artMap && artMap[img.src]) || img.src;
+              const d = doc.createElement('div');
+              d.style.width = '100%';
+              d.style.height = '100%';
+              d.style.backgroundImage = "url('" + url + "')";
+              d.style.backgroundSize = 'cover';
+              d.style.backgroundPosition = 'center';
+              img.replaceWith(d);
+            });
+          }
+
           const clonedBoard = doc.getElementById('board');
           const head = doc.createElement('div');
           head.style.cssText = 'display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:6px 4px 10px;';
