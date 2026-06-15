@@ -1682,6 +1682,27 @@
     return map;
   }
 
+  // Monotonフォントをbase64 dataURLで取得(初回だけ。画像保存のロゴ用)
+  let _monotonDataUrl = null;
+  async function getMonotonDataUrl(){
+    if(_monotonDataUrl !== null) return _monotonDataUrl;
+    try{
+      // Google FontsのCSSからwoff2のURLを取得
+      const cssRes = await fetch('https://fonts.googleapis.com/css2?family=Monoton&display=swap');
+      const css = await cssRes.text();
+      const m = css.match(/url\((https:\/\/[^)]+\.woff2)\)/);
+      if(!m){ _monotonDataUrl = ''; return ''; }
+      const fontRes = await fetch(m[1]);
+      const buf = await fontRes.arrayBuffer();
+      // arrayBuffer → base64
+      let bin = '';
+      const bytes = new Uint8Array(buf);
+      for(let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+      _monotonDataUrl = 'data:font/woff2;base64,' + btoa(bin);
+    }catch(e){ _monotonDataUrl = ''; }
+    return _monotonDataUrl;
+  }
+
   const imgSaveBtn = document.getElementById('imgSaveBtn');
   imgSaveBtn.onclick = async () => {
     shareStatus.textContent = '画像を作成中…(ちょっと待ってね)';
@@ -1720,23 +1741,29 @@
         });
       }
 
-      // ロゴ(ネオン管風SVG)+URLを上部に
+      // ロゴ(ネオン管風SVG・フォント埋め込み)+URLを上部に
+      const monotonFont = await getMonotonDataUrl();
+      const fontFace = monotonFont
+        ? '<style>@font-face{font-family:"MonotonEmbed";src:url(' + monotonFont + ') format("woff2");}</style>'
+        : '';
+      const famName = monotonFont ? 'MonotonEmbed' : 'Monoton, cursive';
       const head = document.createElement('div');
       head.style.cssText = 'display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:4px 4px 12px;';
       const logo = document.createElement('div');
       logo.style.cssText = 'flex:none;line-height:0;';
       logo.innerHTML =
-        '<svg width="300" height="46" viewBox="0 0 300 46" xmlns="http://www.w3.org/2000/svg">' +
+        '<svg width="320" height="48" viewBox="0 0 320 48" xmlns="http://www.w3.org/2000/svg">' +
+        fontFace +
         '<defs><filter id="ng" x="-30%" y="-30%" width="160%" height="160%">' +
         '<feGaussianBlur stdDeviation="2.2" result="b"/>' +
         '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>' +
         '</filter></defs>' +
-        '<text x="2" y="34" filter="url(#ng)" ' +
-        'font-family="Monoton, cursive" font-size="34" letter-spacing="2" ' +
+        '<text x="2" y="36" filter="url(#ng)" ' +
+        'font-family="' + famName + '" font-size="32" letter-spacing="1" ' +
         'fill="none" stroke="#ff5c8a" stroke-width="1.1" ' +
         'style="paint-order:stroke">MUSIC TIER</text>' +
-        '<text x="2" y="34" ' +
-        'font-family="Monoton, cursive" font-size="34" letter-spacing="2" ' +
+        '<text x="2" y="36" ' +
+        'font-family="' + famName + '" font-size="32" letter-spacing="1" ' +
         'fill="#ff7aa3">MUSIC TIER</text>' +
         '</svg>';
       const link = document.createElement('span');
