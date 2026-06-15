@@ -215,7 +215,7 @@
   }
   body.imode-record .item img{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    width:62%;height:62%;border-radius:50%;
+    width:72%;height:72%;border-radius:50%;
     box-shadow:0 0 0 3px rgba(0,0,0,.4), 0 0 0 4px rgba(255,255,255,.06);
   }
   body.imode-record .item .name{
@@ -1579,7 +1579,7 @@
     ctx.fillRect(0,0,size,size);
     // 溝(同心円)
     ctx.lineWidth = Math.max(1, size/110);
-    for(let r = R-2; r > R*0.34; r -= size/55){
+    for(let r = R-2; r > R*0.40; r -= size/55){
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI*2);
       ctx.strokeStyle = (Math.round(r) % 2 === 0) ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.45)';
@@ -1594,7 +1594,7 @@
     ctx.fillStyle = g; ctx.fillRect(0,0,size,size);
     ctx.restore();
     // 中央レーベル(ジャケ写を円形クリップ)
-    const lr = R*0.62;
+    const lr = R*0.72;
     if(jacketImg){
       ctx.save();
       ctx.beginPath(); ctx.arc(cx, cy, lr, 0, Math.PI*2); ctx.closePath(); ctx.clip();
