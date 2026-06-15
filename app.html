@@ -1738,10 +1738,15 @@
       wrap.appendChild(clone);
       document.body.appendChild(wrap);
 
+      // Webフォント(Monotonロゴ等)を明示的に読み込んでから撮影
+      try{ await document.fonts.load("26px 'Monoton'"); }catch(e){}
+      try{ await document.fonts.ready; }catch(e){}
+
       // modern-screenshotで高画質撮影(scale=3相当)
       const dataUrl = await modernScreenshot.domToPng(wrap, {
         scale: 3,
         backgroundColor: '#16121f',
+        font: { },          // Webフォントを埋め込む
       });
 
       document.body.removeChild(wrap);
