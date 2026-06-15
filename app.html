@@ -152,6 +152,14 @@
     font-size:14px;cursor:pointer;padding:4px;
   }
   .tier-tools button:hover{color:var(--text)}
+  .tier-tools .colorbtn{
+    font-size:14px;cursor:pointer;padding:4px;line-height:1;
+    position:relative;display:inline-flex;
+  }
+  .tier-tools .colorbtn input{
+    position:absolute;inset:0;opacity:0;cursor:pointer;
+    width:100%;height:100%;border:none;padding:0;
+  }
   body.playmode .tier-tools{display:none}
 
   /* === カード基本(正方形モード) === */
@@ -1051,12 +1059,24 @@
   }
 
   // ---- ティア ----
+  // 色を #rrggbb 形式に正規化(color inputは hex のみ受け付ける)
+  function toHex(c){
+    if(!c) return '#888888';
+    if(/^#[0-9a-fA-F]{6}$/.test(c)) return c;
+    const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if(m){
+      return '#' + [m[1],m[2],m[3]].map(x => (+x).toString(16).padStart(2,'0')).join('');
+    }
+    return '#888888';
+  }
+
   function makeTier(label, color){
     const tier = document.createElement('div');
     tier.className = 'tier';
     tier.innerHTML = '<div class="tier-label" contenteditable="true" spellcheck="false"></div>' +
       '<div class="tier-items"></div>' +
       '<div class="tier-tools">' +
+        '<label class="colorbtn" title="色を変える">🎨<input type="color" class="colorpick"></label>' +
         '<button class="up" title="上へ">▲</button>' +
         '<button class="down" title="下へ">▼</button>' +
         '<button class="rm" title="削除">✕</button>' +
@@ -1064,6 +1084,13 @@
     const labelEl = tier.querySelector('.tier-label');
     labelEl.textContent = label;
     labelEl.style.background = color;
+    // 色変更
+    const colorPick = tier.querySelector('.colorpick');
+    colorPick.value = toHex(color);
+    colorPick.oninput = () => {
+      labelEl.style.background = colorPick.value;
+      save();
+    };
     const items = tier.querySelector('.tier-items');
     bindDropZone(items, tier);
     tier.querySelector('.up').onclick = () => { if(tier.previousElementSibling) board.insertBefore(tier, tier.previousElementSibling); };
@@ -1430,7 +1457,7 @@
   function packColor(c){
     let i = rgbPalette.indexOf(c);
     if(i < 0) i = tierColors.indexOf(c);
-    return i >= 0 ? i : c;
+    return i >= 0 ? i : toHex(c);
   }
   function unpackColor(c){
     return (typeof c === 'number') ? (tierColors[c] || tierColors[0]) : (c || tierColors[0]);
